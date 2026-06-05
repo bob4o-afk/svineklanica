@@ -5,22 +5,31 @@ declare(strict_types=1);
 namespace Modules\Procurement;
 
 use Illuminate\Support\ServiceProvider;
+use Modules\Procurement\Console\Commands\IngestRunCommand;
+use Modules\Procurement\Contracts\IngestRecordRepository;
+use Modules\Procurement\Contracts\TenderIngestRepository;
+use Modules\Procurement\Repositories\EloquentIngestRecordRepository;
+use Modules\Procurement\Repositories\EloquentTenderIngestRepository;
 
 /**
  * Procurement bounded context: tenders, authorities, companies, items,
  * price snapshots, ingest. Binds this module's repository interfaces to their
- * Eloquent implementations (backend.md §1). Bindings are added as the
- * repositories land.
+ * Eloquent implementations (backend.md §1).
  */
 class ProcurementServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->bind(IngestRecordRepository::class, EloquentIngestRecordRepository::class);
+        $this->app->bind(TenderIngestRepository::class, EloquentTenderIngestRepository::class);
     }
 
     public function boot(): void
     {
-        //
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                IngestRunCommand::class,
+            ]);
+        }
     }
 }

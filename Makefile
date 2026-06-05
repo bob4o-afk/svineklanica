@@ -38,7 +38,8 @@ seed:
 test: test-be test-fe
 
 test-be:
-	docker compose exec app php artisan test
+	-docker compose exec -T db psql -U liberhack -d liberhack -c "CREATE DATABASE liberhack_test" 2>/dev/null || true
+	docker compose run --rm -e APP_ENV=testing -e DB_DATABASE=liberhack_test app php artisan test
 
 test-fe:
 	docker compose run --rm web pnpm test --run
