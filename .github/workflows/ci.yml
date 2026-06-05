@@ -2,14 +2,46 @@ name: CI
 
 # Tests on every push and PR (.claude/rules/devops.md §2). A red suite blocks merge.
 # Layout: Laravel app at repo root; React client in apps/web.
+# `workflow_call` lets release.yml reuse this as its pre-ship test gate.
 on:
   push:
     branches: ["**"]
   pull_request:
+  workflow_call:
 
 jobs:
+  # The core code is built on-site during the hackathon (CLAUDE.md §2). Until the
+  # Laravel app / pnpm lockfile are committed there is nothing to test, so each
+  # language lane is gated on its scaffold existing. This is NOT a green-washing
+  # skip of failing tests (devops.md §2): when the code is present the full suite
+  # runs and a failure blocks merge; before then the job is neutral, not red.
+  detect:
+    name: Detect what's scaffolded
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.check.outputs.backend }}
+      frontend: ${{ steps.check.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          if [ -f artisan ]; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No artisan at repo root yet — skipping backend tests until the Laravel app is scaffolded."
+          fi
+          if [ -f apps/web/pnpm-lock.yaml ]; then
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "frontend=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No apps/web/pnpm-lock.yaml yet — skipping frontend tests until the lockfile is committed."
+          fi
+
   backend:
     name: Backend (Pest)
+    needs: detect
+    if: needs.detect.outputs.backend == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -68,6 +100,8 @@ jobs:
 
   frontend:
     name: Frontend (typecheck · lint · vitest · build)
+    needs: detect
+    if: needs.detect.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -75,9 +109,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `version` input: pnpm/action-setup@v4 reads the pinned
+      # `packageManager: pnpm@9.x` from apps/web/package.json. Setting both errors out.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:

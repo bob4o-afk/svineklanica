@@ -76,7 +76,8 @@ services:
       - "5173"
 
   db:
-    image: postgres:16-alpine
+    # pgvector-enabled Postgres 16 (backend.md §12 — vector search + detectors).
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_DATABASE:-liberhack}
