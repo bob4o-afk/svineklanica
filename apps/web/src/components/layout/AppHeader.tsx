@@ -1,8 +1,8 @@
 import { AppBar, Menu, MenuItem, Stack, Toolbar } from '@mui/material';
-import { ListIcon } from '@phosphor-icons/react';
+import { ListIcon, MagnifyingGlassIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { AppColorModeToggle } from '@/components/controls/AppColorModeToggle';
 import { AppIconButton } from '@/components/controls/AppIconButton';
 import { AppLink } from '@/components/controls/AppLink';
@@ -21,6 +21,7 @@ const NAV_ITEMS: ReadonlyArray<{ to: string; labelKey: string }> = [
  *  dark/light toggle. */
 export function AppHeader() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const menuOpen = anchorEl !== null;
   const closeMenu = () => setAnchorEl(null);
@@ -39,6 +40,10 @@ export function AppHeader() {
             </AppLink>
           ))}
         </Stack>
+
+        <AppIconButton label={t('search:open')} color="inherit" onClick={() => navigate(paths.search)}>
+          <MagnifyingGlassIcon size={20} />
+        </AppIconButton>
 
         <AppColorModeToggle />
 

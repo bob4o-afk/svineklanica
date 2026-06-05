@@ -9,6 +9,7 @@ function seg(value: string): string {
 export const paths = {
   home: '/',
   feed: '/feed',
+  search: '/search',
   post: (publicId: string) => `/posts/${seg(publicId)}`,
   authority: (publicId: string) => `/authorities/${seg(publicId)}`,
   company: (eik: string) => `/companies/${seg(eik)}`,

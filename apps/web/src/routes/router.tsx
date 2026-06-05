@@ -10,6 +10,7 @@ import { NetworkPage } from '@/pages/NetworkPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { PostPage } from '@/pages/PostPage';
 import { PricePage } from '@/pages/PricePage';
+import { SearchPage } from '@/pages/SearchPage';
 import { AdminPlaceholderPage } from '@/pages/admin/AdminPlaceholderPage';
 import { ProtectedRoute } from './ProtectedRoute';
 import { paths, patterns } from './paths';
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
     children: [
       { path: paths.home, element: <HomePage /> },
       { path: paths.feed, element: <FeedPage /> },
+      { path: paths.search, element: <SearchPage /> },
       { path: patterns.post, element: <PostPage /> },
       { path: patterns.authority, element: <AuthorityPage /> },
       { path: patterns.company, element: <CompanyPage /> },
