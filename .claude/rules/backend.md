@@ -82,6 +82,7 @@ Rules:
 - All DB access through Eloquent / the query builder — **parameterized only, never string-concatenated SQL** (see security.md).
 - Ingest is idempotent: upsert on the source's natural key (tender registry number, TED notice ID, EIK).
 - Migrations for every schema change; no manual DB edits.
+- **Vectorized DB (`pgvector`) ⭐:** enable the extension in a migration; store embeddings as `vector` columns on the text we match on (item descriptions, tender docs, company names). Detectors query by **vector similarity** (overpricing clustering, doc-clone, shell/serial-winner entity matching) and a semantic-search endpoint uses it too. Index them (IVFFlat/HNSW). **Embeddings are produced in the Python layer, not PHP** (see `scraping.md`); how they reach Postgres (carried with the ingest record vs a Python embed step at ingest) is a wiring detail to finalize on-site — but don't recompute them in PHP.
 
 ## 13. Tests
 

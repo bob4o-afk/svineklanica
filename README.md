@@ -12,7 +12,7 @@ implausible scope, late payments, cloned docs) — each linked to its primary so
 - **`apps/web/`** — the React + TypeScript + **MUI** (incl. MUI X) + **Tailwind** + Phosphor client. One mobile-first responsive **PWA** = both the web and the "mobile" experience (no separate native app). Built by `apps/web/Dockerfile` → `liberhack/web` image.
 
 ## Stack
-- **Backend:** API-first Laravel 11, modular (controllers · DTOs · actions · services · repositories), queued jobs, Sanctum auth, PostgreSQL + Redis.
+- **Backend:** API-first Laravel 11, modular (controllers · DTOs · actions · services · repositories), queued jobs, Sanctum auth, **PostgreSQL + `pgvector` (vectorized DB)** + Redis.
 - **Infra:** Docker Compose (Caddy proxy, app, queue worker, scheduler, web, db, redis, mailpit). CI on GitHub Actions.
 
 ## Quick start

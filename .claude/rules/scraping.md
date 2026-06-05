@@ -53,6 +53,13 @@ This is law — the Python side and the Laravel `ingest:run` command must agree 
 - Log skipped/failed records **with reasons**, so we can state ingest honestly: *"ingested N, skipped M because …"*. Never silently drop a row.
 - A run prints a summary: source, fetched, written, skipped, output path.
 
-## 8. No business logic committed before the event
+## 8. Embeddings for the vectorized DB (`pgvector`)
+
+- The backend's vector DB needs embeddings, and **embeddings are produced here in Python** (ML libs live in Python; PHP never embeds). Use a **Bulgarian-aware multilingual** model.
+- Embed the text we match on: item descriptions, tender-doc text, company names. Keep it cheap (CPU/batched).
+- Delivery to Postgres is a wiring detail to finalize on-site — either carry the vector with the ingest record, or run a small Python **embed step** at ingest. Either way the backend just **stores + indexes** it (backend.md §12).
+- ⚠️ Open choice (`BUILD_PLAN.md`): small **local** embedder (no API/cost, CPU-fine) vs an **embedding API**. Default to local multilingual unless we hit a wall.
+
+## 9. No business logic committed before the event
 
 - This folder ships **config + the contract only** until the hackathon. Source modules (`sources/<x>.py`), `normalize.py`, and `sinks/` are written **on site**. `contract.py` is allowed now because it *is* the seam definition, not logic.
