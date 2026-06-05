@@ -8,7 +8,9 @@ import {
   TrophyIcon,
   WarningIcon,
 } from '@phosphor-icons/react';
-import type { FlagSeverity, FlagType } from '@/types/api';
+import i18n from '@/i18n';
+import { formatMoney } from '@/lib/money';
+import type { FlagPost, FlagSeverity, FlagType } from '@/types/api';
 
 /** Single source for how each flag TYPE is presented (icon + i18n label). */
 interface FlagTypeMeta {
@@ -44,4 +46,18 @@ export const severityMeta: Record<FlagSeverity, SeverityMeta> = {
 
 export function severityRank(severity: FlagSeverity): number {
   return severityMeta[severity].rank;
+}
+
+/** A one-line, number-forward „Накратко" gist for a post — so a reader gets the point before
+ *  deciding to read the full explanation. Derived from the served flag (subject + evidence), so it
+ *  is guaranteed on every post without a new backend field; the per-type wording lives in i18n
+ *  (`post:tldrByType.*`). Money is run through the single `formatMoney` formatter (frontend.md §6). */
+export function makeTldr(flag: FlagPost): string {
+  const moneyItem = flag.evidence.find((e) => e.money !== undefined);
+  const value = moneyItem?.money !== undefined ? formatMoney(moneyItem.money) : '';
+  const statItem = flag.evidence.find((e) => e.money === undefined);
+  const stat = statItem !== undefined ? String(statItem.value) : '';
+  const company = flag.subject.company?.name ?? '';
+  const authority = flag.subject.authority?.name ?? '';
+  return i18n.t(`post:tldrByType.${flag.type}`, { stat, company, authority, value });
 }

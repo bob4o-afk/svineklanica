@@ -9,9 +9,10 @@ import { AppEvidenceList } from '@/components/flags/AppEvidenceList';
 import { AppFlagBadge } from '@/components/flags/AppFlagBadge';
 import { AppSeverityChip } from '@/components/flags/AppSeverityChip';
 import { AppSourceLink } from '@/components/flags/AppSourceLink';
+import { AppTldr } from '@/components/flags/AppTldr';
 import { useFlagPost } from '@/hooks/queries/useFlagPost';
 import { formatDate } from '@/lib/date';
-import { flagTypeMeta } from '@/lib/flags';
+import { flagTypeMeta, makeTldr } from '@/lib/flags';
 import { paths } from '@/routes/paths';
 
 export interface PostViewProps {
@@ -54,6 +55,8 @@ export function PostView({ publicId }: PostViewProps) {
       <Typography variant="h4" component="h1">
         {headline}
       </Typography>
+
+      <AppTldr text={makeTldr(flag)} />
 
       <section>
         <Typography variant="h6" component="h2" gutterBottom>
