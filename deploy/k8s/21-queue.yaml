@@ -1,0 +1,25 @@
+# Queue worker — the SAME image as the API, different command. Runs the async
+# jobs (email, bulk inserts, scraping, detector runs — backend.md §3).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: queue
+  namespace: liberhack
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: queue }
+  template:
+    metadata:
+      labels: { app: queue }
+    spec:
+      containers:
+        - name: queue
+          image: ghcr.io/OWNER/liberhack-api:latest
+          command: ["php", "artisan", "queue:work", "--tries=3", "--backoff=5"]
+          envFrom:
+            - configMapRef: { name: app-config }
+            - secretRef: { name: app-secrets }
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits: { cpu: "500m", memory: "512Mi" }

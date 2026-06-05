@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: cadvisor       # per-container CPU/mem/net/disk
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  - job_name: node           # host metrics
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # When the Laravel app exposes a /metrics endpoint (Prometheus exporter),
+  # add it here so request rates, queue depth, blacklist bans, and honeypot
+  # hits become graphable / alertable:
+  # - job_name: laravel
+  #   metrics_path: /metrics
+  #   static_configs:
+  #     - targets: ["app:8000"]

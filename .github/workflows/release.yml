@@ -1,0 +1,117 @@
+name: Release
+
+# On a semver tag (vX.Y.Z): test -> build & push images to GHCR ->
+# (optionally) deploy to the VM -> email the user. (.claude/rules/devops.md §3)
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    name: Gate — tests must pass before we ship
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Build & push images (GHCR)
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: prod
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/liberhack-api:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/liberhack-api:latest
+
+      - name: Build & push Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/web
+          target: prod
+          push: true
+          build-args: |
+            VITE_MUI_X_LICENSE_KEY=${{ secrets.VITE_MUI_X_LICENSE_KEY }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/liberhack-web:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/liberhack-web:latest
+
+  deploy:
+    name: Deploy to VM (enable with repo variable DEPLOY_ENABLED=true)
+    needs: build
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH in, pull new images, migrate
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_SSH_HOST }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${{ github.ref_name }}/" .env || echo "IMAGE_TAG=${{ github.ref_name }}" >> .env
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml exec -T app php artisan migrate --force
+
+  notify:
+    name: Email release notifier
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build changelog since previous tag
+        id: log
+        run: |
+          PREV=$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo "")
+          if [ -n "$PREV" ]; then RANGE="$PREV..${{ github.ref_name }}"; else RANGE="${{ github.ref_name }}"; fi
+          {
+            echo "changelog<<EOF"
+            git log --pretty=format:'- %s (%h)' $RANGE
+            echo ""
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Send release email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_HOST }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          from: ${{ secrets.MAIL_FROM_ADDRESS }}
+          to: ${{ secrets.RELEASE_NOTIFY_TO }}
+          subject: "LiberHack Watchdog — released ${{ github.ref_name }}"
+          body: |
+            A new version of LiberHack Watchdog has shipped.
+
+            Version: ${{ github.ref_name }}
+            Images:  ghcr.io/${{ github.repository_owner }}/liberhack-api:${{ github.ref_name }}
+                     ghcr.io/${{ github.repository_owner }}/liberhack-web:${{ github.ref_name }}
+            Commit:  ${{ github.sha }}
+            Build:   passed ✅
+
+            Changes since the previous tag:
+            ${{ steps.log.outputs.changelog }}

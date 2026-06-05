@@ -1,6 +1,7 @@
 # 48-Hour Hackathon AI-Coding Playbook (June 2026)
 
-**Stack:** TypeScript + React (Vite) frontend · Python + FastAPI + DuckDB backend · mostly AI-written code · non-expert team
+**Stack:** React+TS+MUI (Vite) frontend · **Laravel 11** (PHP) backend + Postgres/Redis · **Python** scraping (`apps/scraper`) · Docker · mostly AI-written code · non-expert team
+_(The token/limit/coordination tactics below are stack-agnostic; a few examples still name the earlier Python-API stack — read them as illustrations.)_
 **Tools in play:** Claude Code (CLI) · Cursor · Gemini CLI / Code Assist · OpenAI Codex / GitHub Copilot — used simultaneously by different people.
 
 > **Read this first (the 3 rules that matter most):**

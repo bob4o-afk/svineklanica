@@ -1,0 +1,177 @@
+==============================================================================
+ LiberHack — Public Procurement Watchdog · PLAN / BOOTSTRAP NOTES
+==============================================================================
+This repo currently holds ONLY config + scaffolding. NO application code yet.
+This file tells you (a) how to turn it into a running app and (b) what you must
+set up externally (email, HTTPS, MUI license) and where to get it.
+
+Read the rules first: CLAUDE.md + .claude/rules/*.md (backend, frontend,
+security, devops, data-sources). They are authoritative.
+
+------------------------------------------------------------------------------
+0. WHAT'S ALREADY HERE (config only)
+------------------------------------------------------------------------------
+  Layout is leha-style: the Laravel API IS the repo root; the web client is apps/web.
+
+  /CLAUDE.md, /.claude/rules/*          → the rules
+  /docker-compose.yml, /Caddyfile       → local stack (proxy, app, queue,
+                                          scheduler, web, db, redis, mailpit)
+  /Makefile                             → one-command tasks
+  /.github/workflows/ci.yml             → tests on every push/PR
+  /.github/workflows/release.yml        → on a vX.Y.Z tag: test, build, EMAIL
+  /.env.example                         → root env = Laravel env + compose vars
+  / (root)  composer.json, Dockerfile, pint.json, phpunit.xml,
+            config/cors.php, config/typescript-transformer.php
+                                        → Laravel API config (code goes in
+                                          app/ and modules/<Domain>/)
+  /apps/web/ (package.json, vite/tailwind/ts/eslint configs, Dockerfile,
+              nginx.conf, .env.example, index.html) → React+MUI+Tailwind config
+
+  There is intentionally NO app code (no controllers, components, bootstrap/app.php).
+  Generate the framework skeletons (step 1), then write code per the rules.
+
+------------------------------------------------------------------------------
+1. GENERATE THE FRAMEWORK SKELETONS (do this once)
+------------------------------------------------------------------------------
+Layout: the Laravel app IS the repo ROOT (app/ + modules/); the web client is apps/web.
+
+BACKEND (Laravel 11, API-only) — into the REPO ROOT (keep our composer.json/configs):
+  - Easiest: create a temp Laravel app and copy its skeleton in WITHOUT
+    overwriting the files we already committed:
+      composer create-project laravel/laravel _tmp "^11.0"
+      copy _tmp's app/, bootstrap/, database/, public/, routes/, artisan, and the
+      config/ files we DON'T already have (keep OUR config/cors.php +
+      config/typescript-transformer.php) into the repo root ; then delete _tmp.
+  - Keep our composer.json autoload ("App\\": "app/", "Modules\\": "modules/").
+  - Install: laravel/sanctum, spatie/laravel-data, spatie/laravel-typescript-transformer.
+  - Create the modules (see step 4) under modules/<Domain>/  (at the repo root).
+  - php artisan key:generate   (writes APP_KEY into the root .env)
+
+FRONTEND (Vite + React + TS) — into apps/web (keep our package.json/configs):
+  - Generate a Vite React-TS app, then keep OUR package.json, vite.config.ts,
+    tailwind.config.ts, tsconfig, eslint, postcss, index.html.
+  - Add src/main.tsx, src/App.tsx, theme, i18n, lib/http.ts, lib/logger.ts,
+    components/App*.tsx per .claude/rules/frontend.md.
+
+Then:  cp .env.example .env                  (root = Laravel env + compose vars)
+       cp apps/web/.env.example apps/web/.env
+       fill in the blanks (section 2), then:
+       make build && make up && make install && make migrate
+
+------------------------------------------------------------------------------
+2. WHAT YOU MUST SET UP EXTERNALLY  (and where to get it)
+------------------------------------------------------------------------------
+
+(A) EMAIL — needed for: app notifications (queued jobs) + the release notifier.
+  LOCAL / DEV  → nothing to buy. The stack runs **Mailpit** (already in
+                 docker-compose). All mail is captured, view it at
+                 http://localhost:8025. The root .env already points at it:
+                   MAIL_MAILER=smtp  MAIL_HOST=mailpit  MAIL_PORT=1025
+  REAL SENDING → pick ONE transactional provider (free tiers, easy):
+     • Resend     https://resend.com      (free ~3k/mo; SMTP + API; best DX)
+     • Brevo      https://www.brevo.com   (free 300/day; SMTP)
+     • Mailgun / Postmark / Amazon SES    (also fine; SES cheapest at scale)
+     Steps: create account → verify a sending domain (add SPF + DKIM DNS
+     records they give you) OR use their sandbox/single-verified-sender for
+     the demo → copy the SMTP host/port/user/pass (or API key).
+     Put them in the root .env:
+       MAIL_MAILER=smtp
+       MAIL_HOST=smtp.resend.com        (provider-specific)
+       MAIL_PORT=587
+       MAIL_USERNAME=resend             (provider-specific)
+       MAIL_PASSWORD=<API key / SMTP pass>
+       MAIL_ENCRYPTION=tls
+       MAIL_FROM_ADDRESS=watchdog@yourdomain.bg
+       MAIL_FROM_NAME="LiberHack Watchdog"
+     For the CI RELEASE NOTIFIER, the SAME creds go into GitHub repo secrets
+     (section 3) — NOT into the repo.
+
+(B) HTTPS / TLS CERTIFICATES
+  LOCAL  → the **Caddy** proxy in docker-compose auto-issues a locally-trusted
+           cert for `localhost` (APP_DOMAIN=localhost in .env). Nothing to buy.
+           If a browser distrusts it, install Caddy's local CA once, or use
+           `mkcert` (https://github.com/FiloSottile/mkcert).
+  PUBLIC DEMO / PROD → two free options:
+     • Real domain: point its DNS A-record at your server, set APP_DOMAIN=
+       your-domain.bg in .env — Caddy fetches a free auto-renewing
+       **Let's Encrypt** cert automatically. (Get a domain from Cloudflare
+       Registrar / Namecheap, or a free one from DuckDNS for a demo.)
+     • No server / laptop demo: **Cloudflare Tunnel** (free) or **ngrok** gives
+       you an https:// URL with zero cert work. Easiest for a hackathon pitch.
+
+(C) MUI X PREMIUM COMPONENTS  (DataGrid Premium, charts/pickers pro features)
+  • MUI Core (Material UI) and MUI X **Community** (DataGrid Community, basic
+    charts) are FREE/MIT — no key needed. Start here; you may not need Premium.
+  • Premium/Pro features need a commercial license key from:
+        https://mui.com/x/  →  "Get a license" (they offer a free trial key).
+  • Put the key in apps/web/.env:  VITE_MUI_X_LICENSE_KEY=...
+    and call once at bootstrap:  LicenseInfo.setLicenseKey(import.meta.env.VITE_MUI_X_LICENSE_KEY)
+    Without a key, Premium components still render but show a watermark.
+  • Icons: we use **Phosphor** (@phosphor-icons/react), `XxxIcon` aliases — free.
+
+(D) DATA SOURCES — see .claude/rules/data-sources.md. Verify each on-site
+    (ЦАИС ЕОП app.eop.bg, АОП/РОП, TED open data, data.egov.bg, SEBRA payments,
+    Търговски регистър for company links). Keep a SOURCES.md. Public data only.
+
+(E) HOSTING (go-live) — full runbook in DEPLOY.md.
+    • A VM (Hetzner ~€4/mo / DigitalOcean) + Docker. A domain pointed at it
+      (or a Cloudflare Tunnel for a demo) so Caddy issues free Let's Encrypt TLS.
+    • CI publishes images to GHCR; the VM runs docker-compose.prod.yml (pulls).
+    • Monitoring overlay (Grafana/Prometheus/Uptime Kuma) optional; Sentry for
+      app errors. Kubernetes manifests (deploy/k8s/) are LATER, not now.
+
+------------------------------------------------------------------------------
+3. GITHUB REPO SECRETS (Settings → Secrets and variables → Actions)
+------------------------------------------------------------------------------
+  Needed by .github/workflows/release.yml (the tag → email notifier):
+     MAIL_HOST            smtp host of your provider
+     MAIL_PORT            587 (or 465)
+     MAIL_USERNAME        provider user / "resend"
+     MAIL_PASSWORD        provider SMTP password / API key
+     MAIL_FROM_ADDRESS    verified from-address
+     RELEASE_NOTIFY_TO    where release emails are sent (your email)
+  Optional — auto-deploy to the VM (release.yml "deploy" job):
+     repo VARIABLE  DEPLOY_ENABLED=true
+     DEPLOY_SSH_HOST / DEPLOY_SSH_USER / DEPLOY_SSH_KEY / DEPLOY_PATH
+     VITE_MUI_X_LICENSE_KEY   watermark-free web image build
+  CI (ci.yml) needs NO secrets. Images publish to GHCR with the built-in
+  GITHUB_TOKEN (no PAT needed).
+
+------------------------------------------------------------------------------
+4. FIRST CODE TO WRITE (order of attack — follow .claude/rules/backend.md)
+------------------------------------------------------------------------------
+  Modules under modules/ , one ServiceProvider each (binds repos,
+  loads routes/migrations). Cross-module talk via App\Shared\Contracts + DTO.
+
+   1) Identity      → Sanctum auth (login/logout), User model, guards.
+                      Security middleware: EnsureNotBlacklisted, DetectAbuse,
+                      HoneypotMiddleware + fake-data sandbox (security.md §10),
+                      named rate limiters (security.md §1–§3).
+   2) Procurement   → Tender / ContractingAuthority / Company models (public_id),
+                      repositories, ingest Jobs (queued), public read API +
+                      Resources. Wire ONE real data source early.
+   3) Detection     → Flag model + Detector classes (price-discrepancy,
+                      serial-winner, cancelled, tailored-spec, …). Run as queued
+                      jobs; every flag carries a source_url. Public flag feed API.
+   4) Notifications → queued Mailables; NotifyRelease console command used by
+                      release.yml (or rely on the workflow's SMTP step).
+
+  Heavy work (email, bulk inserts, scraping, detector runs) = QUEUED JOBS, never
+  inline (backend.md §3 — the `queue` container runs them).
+
+  Frontend: theme + tokens → lib/http (axios wrapper) + lib/logger → App*
+  components (AppButton, AppCard, AppFlagBadge, AppTable wrapping MUI DataGrid)
+  → pages (Flag feed, Tender search, Entity profile, Price graph). i18n for
+  every string. Mobile-first responsive + PWA = the "mobile version".
+
+------------------------------------------------------------------------------
+5. DON'T FORGET
+------------------------------------------------------------------------------
+  [x] OSS LICENSE present (MIT) — keep it (MANDATORY, CLAUDE.md §2.5).
+  [ ] Every endpoint guarded + rate-limited; honeypot + blacklist live (security.md).
+  [ ] Every flag links to a primary source (no source → no flag).
+  [ ] composer sync:api-types after backend DTO/Resource changes (TS types).
+  [ ] CI green before merge; cut a release by pushing a vX.Y.Z tag → image + email.
+  [ ] Deploy: VM + docker-compose.prod.yml + Caddy TLS (DEPLOY.md). Monitoring up.
+  [ ] Keep a cached real-data snapshot so a dead upstream can't kill the demo.
+==============================================================================

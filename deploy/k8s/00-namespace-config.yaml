@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: liberhack
+---
+# Non-secret config. Mirrors the non-sensitive half of .env.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: liberhack
+data:
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  APP_URL: "https://your-domain.bg"
+  FRONTEND_URL: "https://your-domain.bg"
+  DB_CONNECTION: "pgsql"
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_DATABASE: "liberhack"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  CACHE_STORE: "redis"
+  QUEUE_CONNECTION: "redis"
+  SESSION_DRIVER: "cookie"
+  CORS_ALLOWED_ORIGINS: "https://your-domain.bg"
+  HONEYPOT_ENABLED: "true"
+  HONEYPOT_SERVE_FAKE_DATA: "true"
+---
+# Secret TEMPLATE — DO NOT commit real values. Create it out-of-band, e.g.:
+#   kubectl -n liberhack create secret generic app-secrets \
+#     --from-literal=APP_KEY=base64:... \
+#     --from-literal=DB_PASSWORD=... \
+#     --from-literal=MAIL_PASSWORD=...
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+  namespace: liberhack
+type: Opaque
+stringData:
+  APP_KEY: "base64:REPLACE_ME"
+  DB_USERNAME: "liberhack"
+  DB_PASSWORD: "REPLACE_ME"
+  MAIL_PASSWORD: "REPLACE_ME"

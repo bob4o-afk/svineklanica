@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: liberhack
+
+resources:
+  - 00-namespace-config.yaml
+  - 10-postgres.yaml
+  - 11-redis.yaml
+  - 20-api.yaml
+  - 21-queue.yaml
+  - 22-scheduler.yaml
+  - 30-web.yaml
+  - 40-ingress.yaml
+
+# Override image owner/tag in one place instead of editing every manifest:
+#   kustomize edit set image ghcr.io/OWNER/liberhack-api=ghcr.io/me/liberhack-api:v1.2.3
+images:
+  - name: ghcr.io/OWNER/liberhack-api
+    newTag: latest
+  - name: ghcr.io/OWNER/liberhack-web
+    newTag: latest

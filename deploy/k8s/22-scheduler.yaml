@@ -1,0 +1,22 @@
+# Laravel scheduler — kicks periodic scrapes/detector runs. CronJob runs the
+# scheduler tick every minute (Laravel decides what's actually due).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scheduler
+  namespace: liberhack
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: scheduler
+              image: ghcr.io/OWNER/liberhack-api:latest
+              command: ["php", "artisan", "schedule:run"]
+              envFrom:
+                - configMapRef: { name: app-config }
+                - secretRef: { name: app-secrets }

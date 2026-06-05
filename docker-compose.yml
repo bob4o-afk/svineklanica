@@ -1,0 +1,128 @@
+# Local development stack. Build/runtime is Docker (see .claude/rules/devops.md).
+# Layout (leha-style): the Laravel app is the repo ROOT (app/, modules/, config/);
+# the React client lives in apps/web. Dockerfile (root) builds the API image;
+# apps/web/Dockerfile builds the web image. `dev` targets bind-mount source.
+
+services:
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+      - web
+
+  app:
+    build:
+      context: .
+      target: dev
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - .:/var/www/html
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  queue:
+    build:
+      context: .
+      target: dev
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - .:/var/www/html
+    command: php artisan queue:work --tries=3 --backoff=5
+    depends_on:
+      - app
+      - redis
+
+  scheduler:
+    build:
+      context: .
+      target: dev
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - .:/var/www/html
+    command: php artisan schedule:work
+    depends_on:
+      - app
+
+  web:
+    build:
+      context: ./apps/web
+      target: dev
+    restart: unless-stopped
+    env_file: ./apps/web/.env
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+    command: pnpm dev --host 0.0.0.0 --port 5173
+    expose:
+      - "5173"
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-liberhack}
+      POSTGRES_USER: ${DB_USERNAME:-liberhack}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-liberhack}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  # Local email capture — open http://localhost:8025 to read sent mail.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+    expose:
+      - "1025"
+
+  # Python scraping layer (apps/scraper). On-demand only (profile "scrape"), so
+  # `make up` doesn't start it. Run a scrape with:
+  #   docker compose run --rm scraper uv run scrape --source ted
+  # It writes the NDJSON ingest contract into ./storage/ingest (shared with the
+  # `app` container); Laravel then runs `php artisan ingest:run --source=ted`.
+  scraper:
+    build:
+      context: ./apps/scraper
+    profiles: ["scrape"]
+    env_file: ./apps/scraper/.env
+    volumes:
+      - ./apps/scraper:/app
+      - ./storage/ingest:/data/ingest
+
+volumes:
+  pg_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,34 @@
+# Ingress = the k8s reverse proxy. Routes /api,/sanctum,/_health -> api,
+# everything else -> web. TLS via cert-manager + Let's Encrypt (free, auto-renew).
+# Requires: ingress-nginx controller + cert-manager + a ClusterIssuer named
+# "letsencrypt-prod" installed in the cluster (see deploy/k8s/README.md).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: liberhack
+  namespace: liberhack
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/limit-rps: "20"        # edge rate limit (security.md §2)
+    nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: ["your-domain.bg"]
+      secretName: liberhack-tls
+  rules:
+    - host: your-domain.bg
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend: { service: { name: api, port: { number: 8000 } } }
+          - path: /sanctum
+            pathType: Prefix
+            backend: { service: { name: api, port: { number: 8000 } } }
+          - path: /_health
+            pathType: Prefix
+            backend: { service: { name: api, port: { number: 8000 } } }
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: web, port: { number: 80 } } }

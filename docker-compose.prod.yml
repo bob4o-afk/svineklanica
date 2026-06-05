@@ -1,0 +1,92 @@
+# PRODUCTION overlay — PULLS prebuilt images from the registry (no build here).
+# CI (release.yml) builds + pushes images on a vX.Y.Z tag; the VM pulls + runs.
+#
+#   export IMAGE_TAG=v1.2.3
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml exec app php artisan migrate --force
+#
+# Set REGISTRY_OWNER + IMAGE_TAG in the VM's .env. db/redis are NOT exposed to
+# the host here (internal only). For real scale, swap db/redis for managed services.
+
+services:
+  proxy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      API_UPSTREAM: app:8000
+      WEB_UPSTREAM: web:80      # prod web image is nginx on :80
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+      - web
+
+  app:
+    image: ${REGISTRY:-ghcr.io}/${REGISTRY_OWNER}/liberhack-api:${IMAGE_TAG:-latest}
+    restart: always
+    env_file: .env
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  queue:
+    image: ${REGISTRY:-ghcr.io}/${REGISTRY_OWNER}/liberhack-api:${IMAGE_TAG:-latest}
+    restart: always
+    env_file: .env
+    command: php artisan queue:work --tries=3 --backoff=5
+    depends_on:
+      - app
+      - redis
+
+  scheduler:
+    image: ${REGISTRY:-ghcr.io}/${REGISTRY_OWNER}/liberhack-api:${IMAGE_TAG:-latest}
+    restart: always
+    env_file: .env
+    command: php artisan schedule:work
+    depends_on:
+      - app
+
+  web:
+    image: ${REGISTRY:-ghcr.io}/${REGISTRY_OWNER}/liberhack-web:${IMAGE_TAG:-latest}
+    restart: always
+    expose:
+      - "80"
+
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+
+volumes:
+  pg_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

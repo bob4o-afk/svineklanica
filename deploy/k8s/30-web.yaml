@@ -1,0 +1,33 @@
+# Web (static PWA served by nginx).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: liberhack
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: web }
+  template:
+    metadata:
+      labels: { app: web }
+    spec:
+      containers:
+        - name: web
+          image: ghcr.io/OWNER/liberhack-web:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits: { cpu: "200m", memory: "128Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: liberhack
+spec:
+  selector: { app: web }
+  ports:
+    - port: 80
+      targetPort: 80

@@ -1,0 +1,34 @@
+[project]
+name = "procurement-scraper"
+version = "0.0.0"
+description = "Python scraping layer for the LiberHack procurement watchdog. Writes the NDJSON ingest contract that Laravel reads."
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.2",
+    "chardet>=5.2",
+    "pydantic>=2.7",
+    "python-dateutil>=2.9",
+]
+
+[project.optional-dependencies]
+# Only when a source is JS-rendered. Install with: uv sync --extra browser
+browser = ["playwright>=1.44"]
+
+[project.scripts]
+scrape = "scraper.run:main"
+
+[dependency-groups]
+dev = ["ruff>=0.5", "pytest>=8.2"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scraper"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

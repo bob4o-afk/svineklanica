@@ -1,0 +1,31 @@
+# Reverse proxy + automatic HTTPS for BOTH dev and prod.
+#  - APP_DOMAIN=localhost  -> Caddy uses a locally-trusted internal cert.
+#  - APP_DOMAIN=your.domain -> Caddy auto-fetches a free Let's Encrypt cert
+#    (host must be publicly reachable on :80/:443 with DNS pointing here).
+#
+# Upstreams are parameterized so the same file works in dev (Vite on :5173)
+# and prod (nginx-served static bundle on :80). docker-compose sets these.
+
+{$APP_DOMAIN:localhost} {
+	encode gzip
+
+	# Security headers (security.md §8).
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# API + auth + health -> Laravel
+	@api path /api/* /sanctum/* /_health
+	handle @api {
+		reverse_proxy {$API_UPSTREAM:app:8000}
+	}
+
+	# everything else -> the React app (Vite dev server, or nginx in prod)
+	handle {
+		reverse_proxy {$WEB_UPSTREAM:web:5173}
+	}
+}

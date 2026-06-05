@@ -1,66 +1,86 @@
 # Prompt Library — Copy-Paste, Low-Error
 
-> Ready prompts for the common tasks, so all 3 of you prompt the AI **consistently** and trigger the low-error behaviors (context, version pins, typed shapes, run/test, small diffs). Idea-agnostic. Adapt the `[brackets]`.
+> Ready prompts for the common tasks, so the whole team prompts the AI **consistently** and triggers the low-error behaviors (context, version pins, typed shapes, run/test, small diffs). Adapt the `[brackets]`.
 >
-> **Every prompt assumes the AI has read `CONTEXT.md`.** If a tool doesn't auto-load it, paste: *"Read CONTEXT.md and MASTER_RULES.md first."*
+> **Every prompt assumes the AI has read `CLAUDE.md` + the relevant `.claude/rules/` file.** If a tool doesn't auto-load them, paste: *"Read CLAUDE.md and .claude/rules/ first."*
 
 ---
 
 ## Universal preamble (prepend to any task)
 ```
-Follow CONTEXT.md + MASTER_RULES.md. Stack is pinned — don't add deps or invent APIs.
-English code, Bulgarian only in user-facing strings. Small diff, one concern.
-Plan the files you'll touch first, then code, then RUN it and show me the output.
-If unsure or missing context, ASK — don't guess.
+Follow CLAUDE.md + .claude/rules/. Stay in your lane (frontend=apps/web, backend=repo root, scraping=apps/scraper).
+Stack is pinned — don't add deps or invent APIs. English code, Bulgarian only in user-facing strings.
+Plan the files you'll touch first, then code, then RUN it (in Docker) and show me the output.
+Small diff, one concern. If unsure or missing context, ASK — don't guess.
 ```
 
-## New React component (`/web`)
+## Backend — new module/endpoint (`/`, Laravel) — contract-safe
 ```
-Create a [ComponentName] component in /web/src/components.
-Props (TypeScript interface, import shared types from /shared/types.ts): [list].
-It should [behavior]. Use shadcn/ui + Recharts where relevant. Labels in Bulgarian.
-Keep it < 150 lines, one file. Add a 1-line docstring. Then run `pnpm -C web dev` and confirm it renders.
-```
-
-## New API endpoint (`/api`) — contract-safe
-```
-Add a FastAPI endpoint GET /[path] in /api returning a Pydantic model [Name] with fields [..].
-Define/extend the Pydantic model FIRST (it's the source of truth). Read data from the DuckDB file.
-After it works: remind me to run `pnpm gen:types` so /shared/types.ts updates, and add a CHANGELOG line.
-Run uvicorn and show me the JSON from the endpoint.
+In modules/[Domain], add GET /api/[path] following .claude/rules/backend.md:
+Route (guarded: auth:sanctum or public+throttle) → thin Controller → [Name]Data DTO (Spatie laravel-data, validates+authorizes)
+→ [UseCase]Action → [Name]Repository (the ONLY place touching Eloquent) → [Name]Resource.
+Expose public_id (UUID), never the autoincrement id. Add #[TypeScript] to the DTO/Resource/Enum.
+No business logic in the controller. Then run `make test-be` and show me the passing feature test
+(include an unauthorized-access test proving the guard works).
 ```
 
-## Scraper / ingest (`/data`)
+## Backend — new red-flag detector
 ```
-Write a scraper in /data for [URL/source]. Use httpx + BeautifulSoup (Playwright only if JS-rendered).
-⚠️ Bulgarian gov site: fetch raw bytes, detect encoding with chardet, decode (cp1251 for legacy else utf-8), normalize to UTF-8.
-Parse fields [..] into a clean list of dicts, then load into a DuckDB table `[name]`.
-Document the table columns in /data/SCHEMA.md. Print 5 sample rows so I can eyeball the Cyrillic. Don't hammer the site — add a small delay.
+Add a [Name]Detector in modules/Detection per .claude/rules/backend.md §11.
+Single run() reads via repositories, writes Flag rows: type, severity, subject, source_url, explanation_bg, evidence.
+A flag with no source_url is forbidden. Make it deterministic + re-runnable, dispatched as a queued Job.
+Add a Pest smoke test on a tiny real fixture. Run `make test-be`.
 ```
 
-## DuckDB query / transform
+## Backend — new migration / ingest upsert
 ```
-In /data (or /api), write a DuckDB query that [aggregation/join].
-Join on [key] (use the canonical name from the glossary). Read the CSV/txt directly if possible (no import).
-Show the SQL + the first 10 result rows. Keep numbers as numbers (watch coded columns).
+Create a migration for table [name] (per .claude/rules/backend.md §12).
+Ingest must be idempotent: upsert on the natural key [tender no / TED id / EIK].
+Then update the `ingest:run` mapping for source [x] so it reads ./storage/ingest/normalized/[x].ndjson
+(the scraper's contract) and upserts. Run `make migrate` then `php artisan ingest:run --source=[x]` on the sample slice.
+```
+
+## Backend → frontend type sync (Seam 2)
+```
+I changed a DTO/Resource. Run `composer sync:api-types` (php artisan typescript:transform) to regenerate
+the TS types, then tell the frontend which generated type to import. Don't hand-write the interface.
+```
+
+## Frontend — new App* component (`apps/web`)
+```
+Create App[Name] in apps/web/src/components per .claude/rules/frontend.md.
+One component per file; export App[Name]Props. Use MUI (+ MUI X if a grid/chart) with the THEME/tokens —
+no hardcoded colors/values; Tailwind only for layout. All strings via i18n t() (Bulgarian-first).
+Network only through lib/http; icons as Phosphor XxxIcon; show a loading skeleton + error state.
+Import API types from the generated types (Seam 2) — never hand-roll them. Then run `make test-fe` (or pnpm dev) and confirm it renders.
+```
+
+## Scraping — new source (`apps/scraper`, Python)
+```
+Add a source module apps/scraper/src/scraper/sources/[x].py per .claude/rules/scraping.md.
+Fetch ONLY from the allow-listed domain [base_url] with httpx (Playwright only if JS-rendered); be polite (UA, throttle, robots).
+⚠️ Cyrillic: read raw bytes → chardet → decode (cp1251 for legacy gov, else utf-8) → keep UTF-8.
+Map raw → IngestRecord (contract.py): source, natural_key=[stable key], source_url, fetched_at (UTC), payload.
+Write normalized NDJSON to ./storage/ingest/normalized/[x].ndjson + a raw snapshot under raw/[x]/.
+Save a small real slice to samples/[x].ndjson. Print "ingested N, skipped M (reasons)" + 5 rows so I can eyeball the Cyrillic.
 ```
 
 ## Bug fix
 ```
-Bug: [what happens] vs [expected]. Here's the file: [path]. Here's the error: [paste].
+Bug: [what happens] vs [expected]. File: [path]. Error: [paste].
 Find the root cause first and explain it in one line BEFORE changing code.
-Make the smallest fix. Run it and show it's fixed. Don't refactor unrelated code.
+Make the smallest fix. Run it (in Docker) and show it's fixed. Don't refactor unrelated code.
 ```
 
 ## Refactor / cleanup (use sparingly in a sprint)
 ```
-Refactor [file] to [goal] WITHOUT changing behavior. Keep the same public interface / types.
-Small steps. Run after each step. If anything's ambiguous, ask before proceeding.
+Refactor [file] to [goal] WITHOUT changing behavior. Keep the same public interface / types / contract.
+Small steps, run after each (`make test`). If anything's ambiguous, ask before proceeding.
 ```
 
 ## "Explain / where is" (use Gemini — huge context)
 ```
-Read [folder/repo]. Explain how [feature] works and list the exact files + functions involved.
+Read [folder]. Explain how [feature] works and list the exact files + classes involved.
 Don't change anything — read-only. Output a short map.
 ```
 
@@ -72,8 +92,8 @@ in Bulgarian: a number/contradiction + a pause + "here they are." Fact-based, sh
 
 ---
 
-## The 10 low-error habits (baked into the prompts above)
-1. Point at **exact files**, don't dump the repo. 2. **Pin versions** / "use only approved libs."
-3. Constrain to **typed shapes** (Pydantic/TS). 4. **Plan → code → run**. 5. **Small diffs**.
-6. "**Ask, don't guess.**" 7. Tell it the **Cyrillic quirk**. 8. Make it **show output**.
-9. **One concern** per prompt. 10. After a seam change, **regenerate the contract**.
+## The low-error habits (baked into the prompts above)
+1. Point at **exact files/lanes**, don't dump the repo. 2. **Use approved libs only**; no invented APIs.
+3. Constrain to **typed shapes** (DTO/`#[TypeScript]`/Pydantic contract). 4. **Plan → code → run (in Docker)**. 5. **Small diffs, one concern**.
+6. "**Ask, don't guess.**" 7. Tell it the **Cyrillic quirk** (chardet/cp1251). 8. Make it **show output / passing test**.
+9. **Guarded + sourced**: every endpoint guarded, every flag has a `source_url`. 10. After a seam change, **regenerate the contract** (`composer sync:api-types` / update `ingest:run`).

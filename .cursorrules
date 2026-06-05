@@ -1,10 +1,14 @@
-Read CONTEXT.md first — it is the single source of truth for this repo.
+Read CLAUDE.md first — it is the authoritative brain for this repo.
 
-Then read the README.md of the layer you're working in (/web, /api, or /data) and, for anything non-trivial, docs/master_rules.md.
+Then read the engineering standards in .claude/rules/ (backend · frontend · scraping · security · devops · data-sources) and the CLAUDE.md/AGENTS.md of the lane you're in (apps/web = frontend, repo root = backend, apps/scraper = scraping).
 
-Key rules (full detail in CONTEXT.md and docs/master_rules.md):
+Three lanes, two seams — stay in your lane:
+- Frontend (apps/web): React + TS + MUI + Tailwind PWA. Consume the API only via generated #[TypeScript] types — never hand-write a cross-API type.
+- Backend (repo root): Laravel 11 modular (Controller → Data DTO → Action/Service → Repository → Job → Resource). Every endpoint guarded + rate-limited. Pydantic-style DTOs carry #[TypeScript].
+- Scraping (apps/scraper): Python. Emit the NDJSON ingest contract to ./storage/ingest/normalized/; Laravel ingests it. Never touch the backend/DB.
+
+Always:
 - English in code, Bulgarian only in user-facing UI strings. No Cyrillic identifiers.
-- The API contract is law: Pydantic models generate the TS types. Never hand-write a cross-API type.
-- Only approved libraries; do not add a dependency without asking.
-- Cyrillic = UTF-8 always (detect with chardet, decode cp1251 for legacy gov sites).
-- Small diffs, run before "done". Stay in your layer's folder.
+- Cyrillic data = UTF-8 (detect with chardet, decode cp1251 for legacy gov sites).
+- No hardcoded strings (i18n). Only approved libraries; don't add a dependency without asking.
+- Every flag links to a primary source (no source → no flag). Small diffs, run before "done".

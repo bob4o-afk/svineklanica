@@ -1,0 +1,18 @@
+# Build context for the backend (API) image = repo root. Keep it lean:
+# the frontend and JS deps don't belong in the PHP image.
+apps/
+packages/
+node_modules/
+vendor/
+.env
+.git/
+.github/
+docker-compose.yml
+Caddyfile
+caddy_data/
+caddy_config/
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+.phpunit.result.cache
