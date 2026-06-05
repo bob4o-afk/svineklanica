@@ -10,7 +10,7 @@ export function makeTheme(mode: ColorMode): Theme {
   return createTheme({
     palette: {
       mode,
-      primary: { main: palette.acid, contrastText: palette.ink },
+      primary: { main: c.accent, contrastText: c.onAccent },
       error: { main: palette.alarm, contrastText: palette.bone },
       warning: { main: palette.rust, contrastText: palette.bone },
       background: { default: c.bg, paper: c.paper },

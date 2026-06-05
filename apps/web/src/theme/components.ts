@@ -34,6 +34,16 @@ export const components: Components<Theme> = {
     styleOverrides: { root: { borderRadius: radii.sm, fontWeight: 600 } },
   },
   MuiLink: {
-    defaultProps: { underline: 'hover' },
+    // Links are always underlined for affordance. Default (primary) links take their color from
+    // the mode-scoped accent (primary.main: ink in light, acid in dark — see theme/tokens.ts);
+    // we force the underline to the full accent color so it stays crisp instead of MUI's faded
+    // default. (frontend.md §1)
+    defaultProps: { underline: 'always' },
+    styleOverrides: {
+      root: ({ theme, ownerState }) =>
+        ownerState.color === 'primary'
+          ? { textDecorationColor: theme.palette.primary.main }
+          : {},
+    },
   },
 };

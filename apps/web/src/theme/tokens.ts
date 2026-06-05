@@ -13,11 +13,16 @@ export const palette = {
 /** Sharp, zine-ish corners. */
 export const radii = { sm: 2, md: 4, lg: 8 } as const;
 
+/** The accent (MUI `primary`) is mode-scoped: acid lime only survives on the dark background
+ *  where it has contrast. In light mode the accent is ink — lime is removed entirely (it was
+ *  near-invisible on the cream bg). `onAccent` is the readable text laid over the accent. */
 export const darkColors = {
   bg: palette.ink,
   paper: '#141414',
   text: palette.bone,
   divider: 'rgba(244, 241, 234, 0.12)',
+  accent: palette.acid,
+  onAccent: palette.ink,
 } as const;
 
 export const lightColors = {
@@ -25,4 +30,6 @@ export const lightColors = {
   paper: '#ffffff',
   text: palette.ink,
   divider: 'rgba(10, 10, 10, 0.12)',
+  accent: palette.ink,
+  onAccent: palette.bone,
 } as const;

@@ -13,7 +13,7 @@ const FONT_SIZES: Record<NonNullable<AppBrandmarkProps['size']>, string> = {
   lg: '1.75rem',
 };
 
-/** The wordmark: an acid accent block + the mono BRAND name. The display identity lives in
+/** The wordmark: an accent block (acid in dark, ink in light) + the mono BRAND name. The display identity lives in
  *  config/brand.ts; this is the only place that paints it. */
 export function AppBrandmark({ showTagline = false, size = 'md' }: AppBrandmarkProps) {
   return (
