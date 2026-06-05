@@ -95,6 +95,10 @@ class Config:
         return self.ingest_out_dir / "samples"
 
     @property
+    def embeddings_dir(self) -> Path:
+        return self.ingest_out_dir / "embeddings"
+
+    @property
     def cache_dir(self) -> Path:
         return self.ingest_out_dir / ".cache"
 

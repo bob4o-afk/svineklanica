@@ -32,6 +32,29 @@ Run: `uv run scrape --source <x>` (or `--all`). List: `uv run scrape --list`.
 | **eop** | ЦАИС ЕОП search UI (`app.eop.bg`) | Modern central system search results | HTML (JS-rendered → Playwright) | doc id from URL, else hash | Public; needs `browser` extra. WAF/JS-heavy. Set `EOP_PAGES`. |
 | **isun** | ИСУН 2020 EU-funds (`2020.eufunds.bg`) | EU-funded beneficiaries, grant amounts | HTML (WAF → Playwright) | row hash | Public transparency data; WAF 403s non-browser. Needs `browser` extra. Set `ISUN_PAGES`. |
 
+## Embeddings (semantic search) — backend handoff
+
+Vectors are produced **in Python** (`uv run embed --source <x>`) and written as a
+sidecar, keyed by `natural_key` so the normalized ingest contract is unchanged:
+
+```
+storage/ingest/embeddings/<source>.ndjson
+{"source","natural_key","source_url","model","dim","text","embedding":[...float...]}
+```
+
+- **What we embed:** a composed searchable document per record (subject/title +
+  authority/winner names + CPV) — see `apps/scraper/src/scraper/searchable.py`.
+- **Model (default):** `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
+  via fastembed (ONNX, CPU). **dim = 384.** Multilingual incl. Bulgarian.
+  Configurable via `EMBED_MODEL` / `EMBED_BACKEND` (fastembed | sentence-transformers).
+- **Distance:** cosine (vectors are L2-normalized).
+- **Backend wiring (pgvector):** add a `vector(384)` column, load by joining the
+  sidecar on `natural_key`, index with HNSW (`vector_cosine_ops`), and embed the
+  search query with the **same** model. The same vectors also feed the
+  overpricing / doc-clone / serial-winner detectors (`backend.md` §12).
+- **Demo / proof:** `uv run search --source ted "компютърни монитори"` ranks the
+  matching notice first — pure Python, no backend needed.
+
 ## Conventions
 
 - **Cyrillic** stays Bulgarian, emitted UTF-8 (`ensure_ascii=false`); bytes are

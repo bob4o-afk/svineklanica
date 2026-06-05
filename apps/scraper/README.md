@@ -65,10 +65,27 @@ docker compose run --rm scraper uv run scrape --source ted
 docker compose exec app php artisan ingest:run --source=ted
 ```
 
+## Semantic search (embeddings)
+Vectors are produced here in Python; the backend stores them in pgvector. We
+embed a composed searchable document (subject/title + entity names + CPV), not
+just the title and not the raw blob. Default model:
+`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (384-dim, CPU via
+fastembed ONNX). Output is a sidecar keyed by `natural_key`, so the ingest
+contract is untouched. Full handoff: [`/SOURCES.md`](../../SOURCES.md).
+
+```bash
+uv sync --extra embed                          # fastembed (ONNX) + numpy
+
+uv run embed --source ted                      # -> storage/ingest/embeddings/ted.ndjson
+uv run search --source ted "компютърни монитори"   # cosine top-k demo (pure Python)
+```
+`EMBED_BACKEND`/`EMBED_MODEL` switch the backend (fastembed | sentence-transformers)
+and model. No API keys — the model is public.
+
 ## Test it
 ```bash
-uv run pytest                 # offline: parsers vs fixtures (deterministic)
-uv run pytest --run-network   # also hit live upstreams (opt-in smoke tests)
+uv run pytest                 # offline: parsers + embeddings vs fixtures/stub model
+uv run pytest --run-network   # also hit live upstreams + download the real model
 uv run ruff check .
 ```
 
@@ -78,6 +95,5 @@ uv run ruff check .
 - Idempotent on `natural_key`; keep raw + normalized; every record has `source_url` + `fetched_at`.
 - Ingest-first; never hit upstream live in the demo; a real sample slice is committed.
 - Polite: robots, throttle, UA, cache. Log "ingested N, skipped M (reasons)".
-
-> **Embeddings (pgvector)** are a **separate, follow-up task** — the payload keeps
-> the Bulgarian text fields (titles, subjects, company names) ready to embed.
+- Embeddings for semantic search are produced here (see above); the backend only
+  stores + indexes them in pgvector.

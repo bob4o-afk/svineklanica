@@ -26,3 +26,26 @@ def test_ted_live_returns_bulgarian_notices(tmp_path):
     assert all(r.source == "ted" for r in records)
     assert all(r.source_url.startswith("https://ted.europa.eu/") for r in records)
     assert all(r.natural_key for r in records)
+
+
+@pytest.mark.network
+def test_real_model_ranks_bulgarian_query():
+    """Downloads the real multilingual model and checks Bulgarian retrieval."""
+    from scraper.embeddings import get_embedder
+    from scraper.search import rank
+    from scraper.sinks.embeddings import EmbedRecord
+
+    embedder = get_embedder(backend="fastembed")
+    corpus = {
+        "med": "Доставка на медицинско оборудване за болница",
+        "road": "Ремонт на улична настилка и пътища",
+        "food": "Доставка на хранителни продукти за училища",
+    }
+    records = [
+        EmbedRecord(source="ted", natural_key=k, source_url=f"https://x/{k}",
+                    model=embedder.model, dim=embedder.dim, text=t,
+                    embedding=embedder.embed_documents([t])[0])
+        for k, t in corpus.items()
+    ]
+    hits = rank(embedder.embed_query("апаратура за болница"), records, top=3)
+    assert hits[0].record.natural_key == "med"

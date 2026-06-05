@@ -48,5 +48,10 @@ __pycache__/
 !/storage/ingest/raw/.gitkeep
 /storage/ingest/normalized/*
 !/storage/ingest/normalized/.gitkeep
-# On-disk fetch cache — never commit.
+# Embedding sidecars — heavy vectors; keep only the committed demo sample.
+/storage/ingest/embeddings/*
+!/storage/ingest/embeddings/.gitkeep
+# On-disk fetch cache + downloaded embedding models — never commit.
 /storage/ingest/.cache/
+/apps/scraper/.fastembed_cache/
+**/local_cache/
