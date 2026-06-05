@@ -48,3 +48,5 @@ __pycache__/
 !/storage/ingest/raw/.gitkeep
 /storage/ingest/normalized/*
 !/storage/ingest/normalized/.gitkeep
+# On-disk fetch cache — never commit.
+/storage/ingest/.cache/
