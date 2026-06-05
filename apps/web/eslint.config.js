@@ -8,7 +8,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 //  - no console.* (use the logger module)
 //  - no `as any` (cast at the narrowest real boundary instead)
 export default tseslint.config(
-  { ignores: ['dist', 'dev-dist', 'coverage'] },
+  { ignores: ['dist', 'dev-dist', 'coverage', 'public/mockServiceWorker.js'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
@@ -26,6 +26,16 @@ export default tseslint.config(
       'no-console': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      // Security: ban dangerouslySetInnerHTML (XSS). Render text; if HTML is ever
+      // unavoidable, sanitize with a DOMPurify allow-list. (.claude/rules/security)
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+          message:
+            'dangerouslySetInnerHTML is banned (XSS risk). Render text, or sanitize with DOMPurify.',
+        },
+      ],
     },
   },
 );

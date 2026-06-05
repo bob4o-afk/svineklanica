@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+
+# Admin is a private surface — keep it out of indexes. (security.md: admin noindex)
+# Sitemap is served by the backend once it exists (Phase 5+).
