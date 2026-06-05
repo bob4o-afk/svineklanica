@@ -1,0 +1,10 @@
+Read CONTEXT.md first — it is the single source of truth for this repo.
+
+Then read the README.md of the layer you're working in (/web, /api, or /data) and, for anything non-trivial, docs/master_rules.md.
+
+Key rules (full detail in CONTEXT.md and docs/master_rules.md):
+- English in code, Bulgarian only in user-facing UI strings. No Cyrillic identifiers.
+- The API contract is law: Pydantic models generate the TS types. Never hand-write a cross-API type.
+- Only approved libraries; do not add a dependency without asking.
+- Cyrillic = UTF-8 always (detect with chardet, decode cp1251 for legacy gov sites).
+- Small diffs, run before "done". Stay in your layer's folder.
