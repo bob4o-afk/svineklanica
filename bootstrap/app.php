@@ -78,7 +78,7 @@ return Application::configure(basePath: dirname(__DIR__))
             RateLimiter::attempt('error-alert-mail', $perMinute, function () use ($to, $e): void {
                 app(SendNotificationAction::class)->execute(
                     $to,
-                    'LiberHack alert: '.class_basename($e),
+                    'Свинекланица Watchdog alert: '.class_basename($e),
                     [
                         $e->getMessage(),
                         $e->getFile().':'.$e->getLine(),

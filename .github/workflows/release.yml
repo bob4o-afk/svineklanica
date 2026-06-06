@@ -1,11 +1,12 @@
-name: Release
+name: Deploy
 
-# On a semver tag (vX.Y.Z): test -> build & push images to GHCR ->
-# (optionally) deploy to the VM -> email the user. (.claude/rules/devops.md §3)
+# On every push to `main`: run tests -> build & push images to GHCR (tagged by
+# commit SHA + latest) -> deploy to the VM -> email the user. No git tags needed.
+# (.claude/rules/devops.md §3 — adapted: push-to-main instead of vX.Y.Z tag.)
 on:
   push:
-    tags:
-      - "v*.*.*"
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -36,6 +37,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Images are tagged by the immutable commit SHA (what the VM pulls) AND
+      # `latest` (convenience). The SHA tag is what makes the deploy deterministic:
+      # the VM can never accidentally run a stale cached `latest`.
       - name: Build & push API image
         uses: docker/build-push-action@v6
         with:
@@ -44,7 +48,7 @@ jobs:
           target: prod
           push: true
           tags: |
-            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-api:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-api:${{ github.sha }}
             ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-api:latest
 
       - name: Build & push Web image
@@ -56,7 +60,7 @@ jobs:
           build-args: |
             VITE_MUI_X_LICENSE_KEY=${{ secrets.VITE_MUI_X_LICENSE_KEY }}
           tags: |
-            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-web:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-web:${{ github.sha }}
             ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-web:latest
 
       # On-demand Python batch tools. Single-stage Dockerfiles (no `target`).
@@ -68,7 +72,7 @@ jobs:
           context: ./apps/scraper
           push: true
           tags: |
-            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-scraper:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-scraper:${{ github.sha }}
             ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-scraper:latest
 
       - name: Build & push AI analyzer image
@@ -78,48 +82,12 @@ jobs:
           file: ./apps/ai/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-ai:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-ai:${{ github.sha }}
             ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-ai:latest
 
-  # Publish a GitHub Release for the pushed tag and mark it "Latest" on the
-  # Releases page. Without this, a `git push --tag` only creates a bare tag —
-  # the Releases page keeps showing whatever was last created by hand (e.g.
-  # `1.0.1`) as Latest. With it, every vX.Y.Z tag becomes the Latest release.
-  github-release:
-    name: Publish GitHub Release (marks the tag as Latest)
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write # job-level override: the repo-wide default is read-only
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # need history for the changelog range
-
-      - name: Build release notes since the previous tag
-        id: notes
-        run: |
-          PREV=$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo "")
-          if [ -n "$PREV" ]; then RANGE="$PREV..${{ github.ref_name }}"; else RANGE="${{ github.ref_name }}"; fi
-          {
-            echo "body<<EOF"
-            git log --pretty=format:'- %s (%h)' $RANGE
-            echo ""
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Create / update the GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          body: ${{ steps.notes.outputs.body }}
-          make_latest: true # this tag becomes the "Latest" release
-
   deploy:
-    name: Deploy to VM (enable with repo variable DEPLOY_ENABLED=true)
+    name: Deploy to VM
     needs: build
-    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: SSH in, pull, migrate, ROLLING (zero-downtime) swap
@@ -135,7 +103,8 @@ jobs:
             # Make compose AND docker-rollout use the prod file + env for ${...} interpolation.
             export COMPOSE_FILE=docker-compose.prod.yml
             export COMPOSE_ENV_FILES=.env.prod
-            TAG="${{ github.ref_name }}"
+            # The freshly built images are tagged by THIS commit's SHA — pull exactly that.
+            TAG="${{ github.sha }}"
 
             # Install the docker-rollout CLI plugin on first run (scales a service up,
             # waits for the new container's healthcheck, then drains the old one).
@@ -149,7 +118,10 @@ jobs:
               chmod +x "$PLUGIN_DIR/docker-rollout"
             fi
 
-            # Point the stack at the freshly built tag, then pull the images.
+            # Point the stack at the freshly built tag, then pull the images. The pull
+            # MUST succeed — if it can't (e.g. GHCR package is private and this VM
+            # isn't `docker login`'d to ghcr.io), `set -e` aborts here instead of
+            # silently leaving the OLD image running. See DEPLOY.md §4.
             sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${TAG}/" .env.prod || echo "IMAGE_TAG=${TAG}" >> .env.prod
             docker compose pull
 
@@ -179,6 +151,12 @@ jobs:
             # traffic hits the workers, and the proxy reload is graceful).
             docker compose up -d --no-deps queue scheduler proxy
 
+            # Sanity check: the new app image must actually contain the code we expect.
+            # `detect:run` is part of the Detection module — if this errors with
+            # "no commands defined in the detect namespace", the VM is running an OLD
+            # image (stale pull / wrong tag) and the deploy should be treated as failed.
+            docker compose run --rm --no-deps app php artisan list detect >/dev/null
+
             # --- Fresh data on every release: scrape -> AI analyze -> ingest ---
             # Sources from repo variable SCRAPE_SOURCES (space/comma list; default
             # "ted"; set it to "off" to skip). The analyzer self-limits via the caps
@@ -204,12 +182,16 @@ jobs:
               echo "SCRAPE_SOURCES=$SOURCES — skipping scrape/analyze on this deploy."
             fi
 
-  # --- Email notifications: one when the release STARTS, one on SUCCESS,
+  # --- Email notifications: one when the deploy STARTS, one on SUCCESS,
   #     one on FAILURE (saying which stage failed). All via the same SMTP secrets.
   notify-start:
-    name: Email — release started
+    name: Email — deploy started
     runs-on: ubuntu-latest
     steps:
+      - name: Short SHA
+        id: ver
+        run: echo "sha=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
       - name: Normalize sender address
         id: from
         env:
@@ -233,33 +215,41 @@ jobs:
           password: ${{ secrets.MAIL_PASSWORD }}
           from: Свинекланица Watchdog <${{ steps.from.outputs.addr }}>
           to: ${{ secrets.RELEASE_NOTIFY_TO }}
-          subject: "Свинекланица Watchdog — release ${{ github.ref_name }} STARTED ⏳"
+          subject: "Свинекланица Watchdog — deploy ${{ steps.ver.outputs.sha }} STARTED ⏳"
           body: |
-            A release of Свинекланица Watchdog has started.
+            A deploy of Свинекланица Watchdog (push to main) has started.
 
-            Version: ${{ github.ref_name }}
             Commit:  ${{ github.sha }}
+            Branch:  ${{ github.ref_name }}
             Follow it: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   notify-success:
-    name: Email — release succeeded
+    name: Email — deploy succeeded
     needs: [test, build, deploy]
-    # Runs only if everything that ran passed (deploy may be skipped when DEPLOY_ENABLED!=true).
-    if: ${{ always() && needs.test.result == 'success' && needs.build.result == 'success' && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped') }}
+    if: ${{ always() && needs.test.result == 'success' && needs.build.result == 'success' && needs.deploy.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Build changelog since previous tag
+      - name: Short SHA
+        id: ver
+        run: echo "sha=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build changelog for this push
         id: log
         run: |
-          PREV=$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo "")
-          if [ -n "$PREV" ]; then RANGE="$PREV..${{ github.ref_name }}"; else RANGE="${{ github.ref_name }}"; fi
+          # The commits introduced by THIS push: github.event.before..github.sha.
+          # Falls back to the last 10 commits on a first push / force-push (before = zeros).
+          BEFORE="${{ github.event.before }}"
           {
             echo "changelog<<EOF"
-            git log --pretty=format:'- %s (%h)' $RANGE
+            if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+              git log --pretty=format:'- %s (%h)' "$BEFORE..${{ github.sha }}"
+            else
+              git log --pretty=format:'- %s (%h)' -n 10 "${{ github.sha }}"
+            fi
             echo ""
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
@@ -269,8 +259,6 @@ jobs:
         env:
           RAW_FROM: ${{ secrets.MAIL_FROM_ADDRESS }}
         run: |
-          # Strip whitespace/newlines that sneak in when a secret is set via echo/pipe,
-          # then 501-proof it: must be a single bare local@domain (no display name, no quotes).
           addr="$(printf '%s' "$RAW_FROM" | tr -d '[:space:]')"
           if ! printf '%s' "$addr" | grep -Eq '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'; then
             echo "::error::MAIL_FROM_ADDRESS is not a valid bare email (got a name, quotes, or whitespace?). Set it to e.g. watchdog@yourdomain.bg"
@@ -287,25 +275,28 @@ jobs:
           password: ${{ secrets.MAIL_PASSWORD }}
           from: Свинекланица Watchdog <${{ steps.from.outputs.addr }}>
           to: ${{ secrets.RELEASE_NOTIFY_TO }}
-          subject: "Свинекланица Watchdog — released ${{ github.ref_name }} ✅"
+          subject: "Свинекланица Watchdog — deployed ${{ steps.ver.outputs.sha }} ✅"
           body: |
-            A new version of Свинекланица Watchdog has shipped successfully.
+            A new version of Свинекланица Watchdog has shipped to the VM successfully.
 
-            Version: ${{ github.ref_name }}
             Commit:  ${{ github.sha }}
-            Deploy:  ${{ needs.deploy.result }}
+            Branch:  ${{ github.ref_name }}
             Run:     ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-            Changes since the previous tag:
+            Changes in this push:
             ${{ steps.log.outputs.changelog }}
 
   notify-failure:
-    name: Email — release failed
+    name: Email — deploy failed
     needs: [test, build, deploy]
     # Runs if ANY stage failed; reports which one.
     if: ${{ always() && (needs.test.result == 'failure' || needs.build.result == 'failure' || needs.deploy.result == 'failure') }}
     runs-on: ubuntu-latest
     steps:
+      - name: Short SHA
+        id: ver
+        run: echo "sha=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
       - name: Determine which stage failed
         id: which
         run: |
@@ -320,8 +311,6 @@ jobs:
         env:
           RAW_FROM: ${{ secrets.MAIL_FROM_ADDRESS }}
         run: |
-          # Strip whitespace/newlines that sneak in when a secret is set via echo/pipe,
-          # then 501-proof it: must be a single bare local@domain (no display name, no quotes).
           addr="$(printf '%s' "$RAW_FROM" | tr -d '[:space:]')"
           if ! printf '%s' "$addr" | grep -Eq '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'; then
             echo "::error::MAIL_FROM_ADDRESS is not a valid bare email (got a name, quotes, or whitespace?). Set it to e.g. watchdog@yourdomain.bg"
@@ -338,12 +327,11 @@ jobs:
           password: ${{ secrets.MAIL_PASSWORD }}
           from: Свинекланица Watchdog <${{ steps.from.outputs.addr }}>
           to: ${{ secrets.RELEASE_NOTIFY_TO }}
-          subject: "Свинекланица Watchdog — release ${{ github.ref_name }} FAILED ❌"
+          subject: "Свинекланица Watchdog — deploy ${{ steps.ver.outputs.sha }} FAILED ❌"
           body: |
-            A release of Свинекланица Watchdog FAILED.
+            A deploy of Свинекланица Watchdog (push to main) FAILED.
 
-            Version:       ${{ github.ref_name }}
+            Commit:        ${{ github.sha }}
             Failed stage:  ${{ steps.which.outputs.stage }}
             Results:       tests=${{ needs.test.result }} build=${{ needs.build.result }} deploy=${{ needs.deploy.result }}
-            Commit:        ${{ github.sha }}
             Logs:          ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

@@ -82,7 +82,7 @@ Then:  cp .env.example .env                  (root = Laravel env + compose vars)
        MAIL_PASSWORD=<API key / SMTP pass>
        MAIL_ENCRYPTION=tls
        MAIL_FROM_ADDRESS=watchdog@yourdomain.bg
-       MAIL_FROM_NAME="LiberHack Watchdog"
+       MAIL_FROM_NAME="Свинекланица Watchdog"
      For the CI RELEASE NOTIFIER, the SAME creds go into GitHub repo secrets
      (section 3) — NOT into the repo.
 

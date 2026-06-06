@@ -18,7 +18,7 @@ final class SendTestMailCommand extends Command
     {
         $email = (string) $this->argument('email');
 
-        $send->execute($email, 'LiberHack Watchdog — тест', [
+        $send->execute($email, 'Свинекланица Watchdog — тест', [
             'Това е тестово известие, изпратено през опашката с Resend.',
             'Ако го виждаш, queued mail-ът работи.',
         ]);
