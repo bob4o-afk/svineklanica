@@ -4,6 +4,19 @@ export enum FlagSeverity { Low = 3000, Medium = 3010, High = 3020, Critical = 30
 export enum Sphere { Judiciary = 6000, Healthcare = 6010, Police = 6020, Education = 6030 };
 }
 declare namespace Modules.Detection.Data {
+export type CalculateCorruptionTaxData = {
+taxesPaid: number;
+};
+export type CorruptionTaxData = {
+taxesPaid: number;
+currency: string;
+corruptionRate: number;
+userCorruptionAmount: number;
+totalSpend: number;
+flaggedSpend: number;
+perSphere: Array<Modules.Detection.Data.SphereSpendShareData>;
+topCases: Array<Modules.Detection.Data.FlaggedCaseShareData>;
+};
 export type FlagData = {
 publicId: string;
 type: Modules.Detection.Enums.FlagType;
@@ -25,6 +38,24 @@ severity: App.Shared.Enums.FlagSeverity | null;
 type: Modules.Detection.Enums.FlagType | null;
 minScore: number | null;
 perPage: number;
+};
+export type FlaggedCaseShareData = {
+kind: string;
+title: string;
+amount: number;
+currency: string;
+sourceUrl: string;
+sphere: App.Shared.Enums.Sphere | null;
+category: App.Shared.Enums.CorruptionCategory | null;
+score: number;
+userShare: number;
+};
+export type SphereSpendShareData = {
+sphere: App.Shared.Enums.Sphere | null;
+total: number;
+flagged: number;
+rate: number;
+userCorruptionAmount: number;
 };
 }
 declare namespace Modules.Detection.Enums {

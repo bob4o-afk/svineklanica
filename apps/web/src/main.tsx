@@ -3,6 +3,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { env } from '@/config/env';
+import { logger } from '@/lib/logger';
+import { initMonitoring } from '@/lib/monitoring';
 import { registerServiceWorker, unregisterServiceWorkers } from '@/lib/pwa';
 import { AppProviders } from '@/providers/AppProviders';
 import { router } from '@/routes/router';
@@ -12,6 +14,13 @@ import './index.css';
 if (env.muiLicenseKey !== '') {
   LicenseInfo.setLicenseKey(env.muiLicenseKey);
 }
+
+// Remote error monitoring (Sentry) — no-op unless VITE_SENTRY_DSN is set (frontend.md §4).
+void initMonitoring().catch((error: unknown) => {
+  logger.error('monitoring_init_failed', {
+    message: error instanceof Error ? error.message : String(error),
+  });
+});
 
 function mount(): void {
   const container = document.getElementById('root');

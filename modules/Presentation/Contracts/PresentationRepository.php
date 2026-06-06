@@ -10,6 +10,8 @@ use Modules\Detection\Models\Flag;
 use Modules\Presentation\Data\FlagFeedFilterData;
 use Modules\Procurement\Models\Company;
 use Modules\Procurement\Models\ContractingAuthority;
+use Modules\Procurement\Models\PriceSnapshot;
+use Modules\Procurement\Models\Tender;
 
 /**
  * The read seam for the citizen-facing API (the BFF). It is allowed to query the
@@ -52,7 +54,7 @@ interface PresentationRepository
     /**
      * Price snapshots for a product series, oldest first.
      *
-     * @return Collection<int, \Modules\Procurement\Models\PriceSnapshot>
+     * @return Collection<int, PriceSnapshot>
      */
     public function priceSnapshots(string $productKey): Collection;
 
@@ -69,6 +71,6 @@ interface PresentationRepository
     /** @return Collection<int, Company> */
     public function searchCompanies(string $q, int $limit = 10): Collection;
 
-    /** @return Collection<int, \Modules\Procurement\Models\Tender> */
+    /** @return Collection<int, Tender> */
     public function searchTenders(string $q, int $limit = 10): Collection;
 }

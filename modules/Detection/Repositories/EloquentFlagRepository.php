@@ -37,9 +37,38 @@ final class EloquentFlagRepository implements FlagRepository
         return Flag::query()->where('public_id', $publicId)->first();
     }
 
+    public function flaggedSubjectScores(): array
+    {
+        $grouped = [];
+        Flag::query()
+            ->whereNotNull('subject_id')
+            ->groupBy('subject_type', 'subject_id')
+            ->selectRaw('subject_type, subject_id, MAX(score) as max_score')
+            ->get()
+            ->each(function (Flag $row) use (&$grouped): void {
+                // Strongest signal wins when a subject carries several flags.
+                $grouped[$row->subject_type][(int) $row->subject_id] = (int) $row->max_score;
+            });
+
+        return $grouped;
+    }
+
     public function deleteByType(FlagType $type): void
     {
         Flag::query()->where('type', $type)->delete();
+    }
+
+    public function deleteAiFlagsForTenders(array $tenderIds): void
+    {
+        if ($tenderIds === []) {
+            return;
+        }
+
+        Flag::query()
+            ->where('subject_type', 'tender')
+            ->whereIn('subject_id', $tenderIds)
+            ->where('evidence->origin', 'ai')
+            ->delete();
     }
 
     public function createMany(array $rows): int

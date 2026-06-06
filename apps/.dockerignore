@@ -1,0 +1,12 @@
+# Build context for the `ai` service is ./apps. It only needs apps/ai + apps/scraper
+# (the editable path dep). Exclude the heavy, constantly-changing web app and caches,
+# otherwise BuildKit's context walk fails with "walker is closed: context canceled".
+web/
+**/node_modules/
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.ruff_cache/
+**/.fastembed_cache/
+**/.env

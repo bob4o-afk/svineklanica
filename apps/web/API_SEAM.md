@@ -25,11 +25,37 @@ rate-limited (security.md). Responses are JSON.
 | `GET /api/regions/aggregate` | `metric?` | `RegionAggregate[]` | corruption map |
 | `GET /api/search` | `q` | `SearchResults` | global search |
 
-Admin (Sanctum cookie) endpoints land in frontend Phase 4 — not needed yet.
+## Admin endpoints (Sanctum SPA cookie) — frontend Phase 4 SHIPPED (on MSW)
+
+The admin area (login → review queue → approve/reject + sources CRUD) is **built and running on
+MSW**. Auth is the **Sanctum SPA-cookie** flow: `GET /sanctum/csrf-cookie` (app root, **not** under
+`/api`) primes the `XSRF-TOKEN` cookie, then the calls below run with the session cookie + the
+`X-XSRF-TOKEN` header (the `http` wrapper already sends both; no token in JS). **Every admin route
+must enforce the session + an editor policy server-side** (security.md §1) — the client guard is UX
+only. Reject anonymous callers with **401**.
+
+| Method · path | Body / params | Response | Used by |
+|---|---|---|---|
+| `GET /sanctum/csrf-cookie` | — | `204` (sets `XSRF-TOKEN`) | login |
+| `POST /api/admin/login` | `{email, password}` | `AdminUser` (or `422` on bad creds) | login |
+| `POST /api/admin/logout` | — | `204` | logout |
+| `GET /api/admin/me` | — | `AdminUser` (or `401` when anonymous) | AuthProvider/session |
+| `GET /api/admin/flag-posts` | `status` (`pending` default), `page`, `per_page` | `Paginated<FlagPost>` | review queue |
+| `GET /api/admin/flag-posts/{public_id}` | — | `FlagPost` (**any** status, unlike the public detail) | review panel |
+| `POST /api/admin/flag-posts/{public_id}/approve` | `ReviewDecision` (`{title?, explanation_bg?, note?, tags?}`) | `FlagPost` | publish |
+| `POST /api/admin/flag-posts/{public_id}/reject` | `{note?}` | `FlagPost` | reject |
+| `GET /api/admin/sources` | — | `Source[]` | sources registry |
+| `POST /api/admin/sources` | `Omit<Source,'public_id'\|'last_ingested_at'>` | `Source` (`201`) | add source |
+| `PATCH /api/admin/sources/{public_id}` | `Partial<…>` | `Source` | edit / toggle `enabled` |
+| `DELETE /api/admin/sources/{public_id}` | — | `204` | delete source |
+
+> Approving a flag flips `status` → `approved` (sets `published_at`, applies the editor's edits +
+> `tags`); it then appears in the **public** `GET /api/flag-posts` feed and drops out of the queue.
 
 ## Field notes the backend must honour
 
 - **`FlagPost.category`** — `ProcurementSector` (`health|education|roads|construction|it|utilities|supplies|other`). **Derive from CPV** at ingest/detection (same buckets as `apps/web/src/lib/sectors.ts::sectorFromCpv`). Powers the feed „Сектор" facet + map dimension.
+- **`FlagPost.tags`** — `PunkTag[]` (`theft|dodgy_deal|shushi_mushi` — the „крадене на пари / кофти сделки / шуши-муши" editorial badges, CLAUDE.md §1.0.1). **Admin-assigned on approval**, NOT computed; persist what the approve call sends. Labels are i18n (`flags:tag.*`), so the API carries the **enum keys**, not Bulgarian text.
 - **`FlagPost.series_key`** — present on `price_discrepancy` flags; the key for `GET /api/price-series/{key}` (same product/CPV cluster the detector grouped on).
 - **`region_code`** — NUTS3 oblast code (`BG411` София-град, `BG421` Пловдив, …) on `AuthorityRef.region_code` and `RegionAggregate.region_code`, matching `public/geo/bg-provinces.geojson` `properties.NUTS_ID` and `apps/web/src/lib/regions.ts`.
 - **`sources[]` ≥ 1** on every `FlagPost` — no source → no flag (CLAUDE.md §0). `PricePoint.source` likewise.

@@ -36,6 +36,10 @@ services:
     restart: always
     env_file: .env.prod
     # No command override: the FrankenPHP image's own CMD serves the app on :8000.
+    # Shared ingest handoff: the scraper/ai tools write NDJSON + verdicts here and
+    # `php artisan ingest:run` reads them (the prod analogue of the local bind mount).
+    volumes:
+      - ingest_data:/app/storage/ingest
     expose:
       - "8000"
     # The rolling deploy waits for this to go healthy before draining the old
@@ -57,6 +61,9 @@ services:
     restart: always
     env_file: .env.prod
     command: php artisan queue:work --tries=3 --backoff=5
+    # The async ingest job (ingest:run --queue) runs here, so it needs the handoff dir.
+    volumes:
+      - ingest_data:/app/storage/ingest
     depends_on:
       - app
       - redis
@@ -66,6 +73,8 @@ services:
     restart: always
     env_file: .env.prod
     command: php artisan schedule:work
+    volumes:
+      - ingest_data:/app/storage/ingest
     depends_on:
       - app
 
@@ -104,8 +113,37 @@ services:
     volumes:
       - redis_data:/data
 
+  # --- On-demand Python batch tools (NOT daemons) ----------------------------
+  # Pulled from GHCR like the rest (built+pushed by release.yml). They are NOT
+  # started by `up -d` (profile "tools"); run them out-of-band against the shared
+  # ingest volume, then ingest the result. Ingest-first — never live in a demo.
+  #   docker compose --env-file .env.prod -f docker-compose.prod.yml --profile tools \
+  #     run --rm scraper uv run scrape --source ted
+  #   docker compose --env-file .env.prod -f docker-compose.prod.yml --profile tools \
+  #     run --rm ai uv run analyze --source ted
+  #   docker compose --env-file .env.prod -f docker-compose.prod.yml \
+  #     exec app php artisan ingest:run --source=ted
+  scraper:
+    image: ${REGISTRY:-ghcr.io}/${REGISTRY_OWNER}/svineklanitsa-scraper:${IMAGE_TAG:-latest}
+    profiles: ["tools"]
+    restart: "no"
+    env_file: .env.prod
+    volumes:
+      - ingest_data:/data/ingest
+
+  ai:
+    image: ${REGISTRY:-ghcr.io}/${REGISTRY_OWNER}/svineklanitsa-ai:${IMAGE_TAG:-latest}
+    profiles: ["tools"]
+    restart: "no"
+    # GOOGLE_API_KEY + AGENTS_CAP + AGENTS_EVAL_CAP come from .env.prod.
+    env_file: .env.prod
+    volumes:
+      - ingest_data:/data/ingest
+
 volumes:
   pg_data:
   redis_data:
   caddy_data:
   caddy_config:
+  # Scraper/ai NDJSON + verdict handoff, shared with app/queue (read by ingest:run).
+  ingest_data:

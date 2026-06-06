@@ -9,13 +9,14 @@ import type {
   RegionAggregate,
 } from '@/types/api';
 import {
-  approvedFlags,
   authorities,
   companies,
   priceSeriesByKey,
   serialWinnerGraphById,
   tenders,
 } from '../fixtures/data';
+import * as store from '../fixtures/store';
+import { adminHandlers } from './admin';
 
 const SEVERITY_RANK: Record<FlagSeverity, number> = { critical: 4, high: 3, medium: 2, low: 1 };
 
@@ -49,7 +50,7 @@ export const handlers = [
     const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
     const perPage = Math.min(50, Math.max(1, Number(url.searchParams.get('per_page') ?? '6') || 6));
 
-    let items = approvedFlags.slice();
+    let items = store.approvedFlagList();
     if (types.length > 0) items = items.filter((f) => types.includes(f.type));
     if (categories.length > 0)
       items = items.filter((f) => f.category !== undefined && categories.includes(f.category));
@@ -66,7 +67,7 @@ export const handlers = [
   }),
 
   http.get('/api/flag-posts/:publicId', ({ params }) => {
-    const flag = approvedFlags.find((f) => f.public_id === params.publicId);
+    const flag = store.approvedFlagList().find((f) => f.public_id === params.publicId);
     if (!flag) return new HttpResponse(null, { status: 404 });
     return HttpResponse.json(flag);
   }),
@@ -74,7 +75,9 @@ export const handlers = [
   http.get('/api/authorities/:publicId', ({ params }) => {
     const authority = authorities.find((a) => a.public_id === params.publicId);
     if (!authority) return new HttpResponse(null, { status: 404 });
-    const flags = approvedFlags.filter((f) => f.subject.authority?.public_id === authority.public_id);
+    const flags = store
+      .approvedFlagList()
+      .filter((f) => f.subject.authority?.public_id === authority.public_id);
     return HttpResponse.json({
       authority,
       stats: { flag_count: flags.length, critical_count: countCritical(flags) },
@@ -85,7 +88,9 @@ export const handlers = [
   http.get('/api/companies/:eik', ({ params }) => {
     const company = companies.find((c) => c.eik === params.eik);
     if (!company) return new HttpResponse(null, { status: 404 });
-    const flags = approvedFlags.filter((f) => f.subject.company?.public_id === company.public_id);
+    const flags = store
+      .approvedFlagList()
+      .filter((f) => f.subject.company?.public_id === company.public_id);
     return HttpResponse.json({
       company,
       stats: { flag_count: flags.length, critical_count: countCritical(flags) },
@@ -109,7 +114,7 @@ export const handlers = [
   http.get('/api/regions/aggregate', ({ request }) => {
     const category = new URL(request.url).searchParams.get('category');
     const counts = new Map<string, number>();
-    for (const flag of approvedFlags) {
+    for (const flag of store.approvedFlagList()) {
       const code = flag.subject.authority?.region_code;
       if (code === undefined) continue;
       if (category !== null && flag.category !== category) continue;
@@ -134,6 +139,5 @@ export const handlers = [
     });
   }),
 
-  // Admin (Phase 1): nobody is authenticated yet — full flow lands in Phase 4.
-  http.get('/api/admin/me', () => new HttpResponse(null, { status: 401 })),
+  ...adminHandlers,
 ];

@@ -24,6 +24,47 @@ final class SphereClassifier
         );
     }
 
+    /**
+     * Resolve sphere/category, trusting the Bulgarian strings the scraper already
+     * computed (contract.py v2 carries `sphere`/`category` as BG strings, spheres.py)
+     * and only re-deriving when they're absent or don't map to a known enum case.
+     * "Agree once" — Laravel maps the string → its enum, it doesn't re-classify.
+     */
+    public function resolve(
+        ?string $sphereBg,
+        ?string $categoryBg,
+        ?string $authorityName,
+        ?string $cpvCode,
+        string $source,
+    ): TenderClassification {
+        return new TenderClassification(
+            sphere: $this->sphereFromBg($sphereBg) ?? $this->sphere($authorityName, $cpvCode),
+            category: $this->categoryFromBg($categoryBg) ?? $this->category($source),
+        );
+    }
+
+    private function sphereFromBg(?string $bg): ?Sphere
+    {
+        return match ($bg) {
+            'съдебна система' => Sphere::Judiciary,
+            'здравеопазване' => Sphere::Healthcare,
+            'полиция' => Sphere::Police,
+            'образование' => Sphere::Education,
+            // Python may emit spheres we don't model yet (правителство, пътно
+            // строителство…) — fall through to derivation / unset rather than guess.
+            default => null,
+        };
+    }
+
+    private function categoryFromBg(?string $bg): ?CorruptionCategory
+    {
+        return match ($bg) {
+            'обществена поръчка' => CorruptionCategory::PublicProcurement,
+            'нерегламентирани плащания' => CorruptionCategory::UnregulatedPayment,
+            default => null,
+        };
+    }
+
     private function sphere(?string $authorityName, ?string $cpvCode): ?Sphere
     {
         // Primary signal: Bulgarian keywords in the authority name (accent-free, lower-cased).

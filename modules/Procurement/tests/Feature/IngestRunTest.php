@@ -10,11 +10,17 @@ use Modules\Procurement\Enums\TenderStatus;
 use Modules\Procurement\Jobs\IngestSourceJob;
 use Modules\Procurement\Models\Company;
 use Modules\Procurement\Models\ContractingAuthority;
+use Modules\Procurement\Models\IngestRecord;
+use Modules\Procurement\Models\Payment;
 use Modules\Procurement\Models\PriceSnapshot;
 use Modules\Procurement\Models\Tender;
 use Modules\Procurement\Models\TenderItem;
 
-/** Writes a small NDJSON fixture to a temp file and returns its path. */
+/**
+ * Writes a small NDJSON fixture to a temp file and returns its path.
+ * Uses the canonical v2 payload (contract.py): a shared envelope + a typed
+ * `tender` block, dispatched by `record_type`.
+ */
 function writeFixture(string $source): string
 {
     $valid1 = json_encode([
@@ -22,15 +28,19 @@ function writeFixture(string $source): string
         'natural_key' => '2026/S-000001',
         'source_url' => 'https://ted.europa.eu/notice/1',
         'fetched_at' => '2026-06-05T10:00:00Z',
-        'schema_version' => 1,
+        'schema_version' => 2,
         'payload' => [
+            'record_type' => 'tender',
+            'category' => 'обществена поръчка',
             'title' => 'Доставка на лаптопи',
-            'value' => 250000.00,
-            'currency' => 'BGN',
-            'status' => 'awarded',
             'authority' => ['name' => 'Община Бургас', 'eik' => '000056814'],
             'winner' => ['name' => 'Техно Трейд ЕООД', 'eik' => '201234567'],
-            'items' => [['description' => 'Лаптоп', 'quantity' => 50, 'unit_price' => 5000.00]],
+            'tender' => [
+                'value' => 250000.00,
+                'currency' => 'BGN',
+                'status' => 'awarded',
+                'items' => [['description' => 'Лаптоп', 'quantity' => 50, 'unit_price' => 5000.00]],
+            ],
         ],
     ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
 
@@ -39,8 +49,14 @@ function writeFixture(string $source): string
         'natural_key' => '2026/S-000002',
         'source_url' => 'https://ted.europa.eu/notice/2',
         'fetched_at' => '2026-06-05T10:05:00Z',
-        'schema_version' => 1,
-        'payload' => ['title' => 'Ремонт на път', 'status' => 'announced', 'authority' => ['name' => 'Община Белица']],
+        'schema_version' => 2,
+        'payload' => [
+            'record_type' => 'tender',
+            'category' => 'обществена поръчка',
+            'title' => 'Ремонт на път',
+            'authority' => ['name' => 'Община Белица'],
+            'tender' => ['status' => 'announced'],
+        ],
     ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
 
     $missingKeys = json_encode(['source' => $source, 'natural_key' => 'x'], JSON_THROW_ON_ERROR);
@@ -106,6 +122,8 @@ it('infers the sphere from the contracting authority name', function () {
         'source_url' => 'https://ted.europa.eu/notice/h',
         'fetched_at' => '2026-06-05T10:00:00Z',
         'payload' => [
+            'record_type' => 'tender',
+            'category' => 'обществена поръчка',
             'title' => 'Доставка на медицинско оборудване',
             'authority' => ['name' => 'МБАЛ „Света Анна" Бургас'],
         ],
@@ -118,6 +136,77 @@ it('infers the sphere from the contracting authority name', function () {
 
     $tender = Tender::where('natural_key', '2026/S-HEALTH')->firstOrFail();
     expect($tender->sphere)->toBe(Sphere::Healthcare);
+
+    unlink($path);
+});
+
+it('dispatches a payment record to the payments table (not tenders)', function () {
+    $line = json_encode([
+        'source' => 'sebra',
+        'natural_key' => 'PAY-0001',
+        'source_url' => 'https://minfin.bg/sebra/1',
+        'fetched_at' => '2026-06-05T10:00:00Z',
+        'schema_version' => 2,
+        'payload' => [
+            'record_type' => 'payment',
+            'category' => 'нерегламентирани плащания',
+            'title' => 'Плащане към доставчик',
+            'authority' => ['name' => 'Областна дирекция на МВР - Бургас'],
+            'winner' => ['name' => 'Доставчик ООД'],
+            'payment' => [
+                'spender' => 'Областна дирекция на МВР - Бургас',
+                'recipient' => 'Доставчик ООД',
+                'amount' => 123456.78,
+                'currency' => 'BGN',
+                'paid_at' => '2026-05-01',
+            ],
+        ],
+    ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+    $path = tempnam(sys_get_temp_dir(), 'ndjson_').'.ndjson';
+    file_put_contents($path, $line."\n");
+
+    $summary = app(IngestSourceAction::class)->execute('sebra', $path);
+
+    expect($summary->written)->toBe(1)
+        ->and(Payment::count())->toBe(1)
+        ->and(Tender::count())->toBe(0); // a payment must NOT become a tender
+
+    $payment = Payment::firstOrFail();
+    expect((float) $payment->amount)->toBe(123456.78)
+        ->and($payment->category)->toBe(CorruptionCategory::UnregulatedPayment)
+        ->and($payment->sphere)->toBe(Sphere::Police) // "МВР" → police
+        ->and($payment->spender->name)->toBe('Областна дирекция на МВР - Бургас')
+        ->and($payment->recipient->name)->toBe('Доставчик ООД')
+        ->and($payment->public_id)->not->toBeEmpty();
+
+    unlink($path);
+});
+
+it('routes a non-tender/payment record type to provenance only', function () {
+    $line = json_encode([
+        'source' => 'gov_jobs',
+        'natural_key' => 'JOB-1',
+        'source_url' => 'https://iisda.government.bg/competitions/1',
+        'fetched_at' => '2026-06-05T10:00:00Z',
+        'schema_version' => 2,
+        'payload' => [
+            'record_type' => 'job',
+            'category' => 'конкурси за работа',
+            'title' => 'Конкурс за началник отдел',
+        ],
+    ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+    $path = tempnam(sys_get_temp_dir(), 'ndjson_').'.ndjson';
+    file_put_contents($path, $line."\n");
+
+    $summary = app(IngestSourceAction::class)->execute('gov_jobs', $path);
+
+    // Counted as written (provenance landed), but no tender/payment domain row.
+    expect($summary->written)->toBe(1)
+        ->and(Tender::count())->toBe(0)
+        ->and(Payment::count())->toBe(0)
+        ->and(IngestRecord::where('natural_key', 'JOB-1')->exists())->toBeTrue();
 
     unlink($path);
 });

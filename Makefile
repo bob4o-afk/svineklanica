@@ -1,11 +1,13 @@
-# Convenience targets — everything runs in Docker.
-.PHONY: help build up down restart logs install migrate seed test test-be test-fe lint sh-app sh-web
+# Convenience targets. Backend + infra run in Docker; the FRONTEND (Vite) runs on the HOST
+# (`make web`) for fast native HMR + instant docker restarts — see docker-compose.yml `proxy`.
+.PHONY: help build up down restart logs install migrate seed test test-be test-fe lint sh-app web
 
 help:
 	@echo "build    - build all images"
-	@echo "up       - start the stack (detached)"
+	@echo "up       - start the backend stack (api, db, redis, queue, caddy) detached"
+	@echo "web      - start the frontend (Vite) on the host — open https://localhost"
 	@echo "down     - stop the stack"
-	@echo "install  - install backend (composer) + frontend (pnpm) deps"
+	@echo "install  - install backend (composer, in Docker) + frontend (pnpm, on host) deps"
 	@echo "migrate  - run DB migrations"
 	@echo "seed     - run DB seeders"
 	@echo "test     - run backend + frontend test suites"
@@ -17,6 +19,12 @@ build:
 up:
 	docker compose up -d
 
+# Frontend dev server on the host (native fs watching = real HMR). Caddy proxies
+# https://localhost → host.docker.internal:5173, so open https://localhost (NOT :5173).
+# (host:true + port:5173 already come from vite.config.ts — `pnpm dev` alone is equivalent.)
+web:
+	pnpm --dir apps/web dev
+
 down:
 	docker compose down
 
@@ -27,7 +35,7 @@ logs:
 
 install:
 	docker compose run --rm app composer install
-	docker compose run --rm web pnpm install
+	pnpm --dir apps/web install
 
 migrate:
 	docker compose exec app php artisan migrate
@@ -42,14 +50,11 @@ test-be:
 	docker compose run --rm -e APP_ENV=testing -e DB_DATABASE=liberhack_test app php artisan test
 
 test-fe:
-	docker compose run --rm web pnpm test -- --run
+	pnpm --dir apps/web test -- --run
 
 lint:
 	docker compose run --rm app ./vendor/bin/pint --test
-	docker compose run --rm web pnpm lint
+	pnpm --dir apps/web lint
 
 sh-app:
 	docker compose exec app sh
-
-sh-web:
-	docker compose exec web sh

@@ -17,8 +17,26 @@ interface FlagRepository
 
     public function find(string $publicId): ?Flag;
 
+    /**
+     * Max suspicion score (0–100) per distinct flagged subject, grouped by morph
+     * alias — for the corruption-tax calculator's score-weighted flagged spend.
+     * A subject with several flags keeps its STRONGEST signal (the max). Returns
+     * e.g. ['tender' => [23 => 72, 24 => 50], 'company' => [5 => 100]].
+     *
+     * @return array<string, array<int, int>>
+     */
+    public function flaggedSubjectScores(): array;
+
     /** Clear every flag of a given type — lets a detector re-run idempotently. */
     public function deleteByType(FlagType $type): void;
+
+    /**
+     * Clear AI-authored flags (evidence.origin = 'ai') on the given tender subjects,
+     * so the AI verdict ingest can re-run idempotently without touching detector flags.
+     *
+     * @param  array<int, int>  $tenderIds
+     */
+    public function deleteAiFlagsForTenders(array $tenderIds): void;
 
     /**
      * Persist a batch of flag rows (one detector's output).

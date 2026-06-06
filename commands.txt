@@ -1,8 +1,9 @@
 ================================================================================
  Свинекланица — command cheat sheet  (run all from the repo root)
 ================================================================================
-Everything runs in Docker (devops.md). The Laravel API is the repo root; the
-React client is in apps/web. Convenience targets live in the Makefile (`make ...`).
+Backend + infra run in Docker (devops.md). The Laravel API is the repo root; the
+React client is in apps/web and — in dev — its Vite server runs ON THE HOST
+(`make web`, fast native HMR). Convenience targets live in the Makefile (`make ...`).
 
 Tip: `docker compose run --rm app <cmd>` runs a one-off in a fresh app container
 (auto-starts db+redis via depends_on). `docker compose exec app <cmd>` runs in
@@ -15,12 +16,20 @@ the already-running container.
 docker compose build app
 make build                                   # builds all images
 
-# Start everything (api, web, db, redis, queue, scheduler, caddy, mailpit)
+# Start the BACKEND stack (api, db, redis, queue, scheduler, caddy, mailpit) — NO frontend
 docker compose up -d
 make up
 
+# Start the FRONTEND dev server (Vite) ON THE HOST — then open https://localhost (NOT :5173)
+make web                                     # == cd apps/web && pnpm dev
+#   Leave it running in its own terminal. Native file-watching = instant HMR; backend
+#   `docker` restarts never touch it (the in-container Vite was ~40s-to-paint on Win/macOS).
+
 # Start just the database + redis (enough for migrate/seed/test)
 docker compose up -d db redis
+
+# Fallback: run Vite INSIDE Docker instead of on the host (slower; needs polling for HMR)
+docker compose --profile container-vite up -d web    # + set WEB_UPSTREAM_HOST=web for Caddy
 
 # Stop the stack  (NOTE: never `down -v` — it deletes the DB volume)
 docker compose down
@@ -35,7 +44,8 @@ docker compose exec app sh                   # shell in the API container
 --------------------------------------------------------------------------------
 docker compose run --rm app composer install
 docker compose run --rm app composer update --no-scripts     # advisory-blocked? see composer.json policy
-make install                                 # composer install + pnpm install (web)
+make install                                 # composer install (Docker) + pnpm install (HOST, for `make web`)
+pnpm --dir apps/web install                  # frontend deps only (host) — needed before `make web`
 
 --------------------------------------------------------------------------------
  APP KEY  (only if APP_KEY is empty in .env — do NOT --force an existing key)
@@ -76,6 +86,25 @@ docker compose run --rm app php artisan ingest:run --source=ted --path=storage/i
 docker compose run --rm app php artisan ingest:run --source=ted --queue  # dispatch the async job instead
 
 --------------------------------------------------------------------------------
+ SCRAPE + AI ANALYZE   (Python tools, apps/scraper + apps/ai — on-demand only)
+--------------------------------------------------------------------------------
+# LOCAL (profiles keep them out of `up`; they share ./storage/ingest with `app`)
+docker compose run --rm scraper uv run scrape --source ted        # -> storage/ingest/normalized/ted.ndjson
+docker compose run --rm ai uv run analyze --source ted            # -> storage/ingest/verdicts/ted.ndjson
+docker compose run --rm ai uv run analyze --no-llm --source ted   # deterministic-only (no Gemini/cost)
+
+# AI concurrency + cost governors (apps/ai/.env locally, .env.prod in prod):
+#   AGENTS_CAP=100        max CONCURRENT agent calls in flight (async ceiling; default 8)
+#   AGENTS_EVAL_CAP=100   max TOTAL LLM evaluations per run; 0 = unlimited (default 100)
+# GOOGLE_API_KEY enables Gemini; without it the analyzer runs deterministic-only.
+
+# PROD on the VM (svineklanitsa-{scraper,ai} images, profile "tools", shared ingest_data volume)
+export COMPOSE_FILE=docker-compose.prod.yml COMPOSE_ENV_FILES=.env.prod
+docker compose --profile tools run --rm scraper uv run scrape --source ted
+docker compose --profile tools run --rm ai uv run analyze --source ted
+docker compose exec app php artisan ingest:run --source=ted        # then ingest the handoff
+
+--------------------------------------------------------------------------------
  DETECT   (run the red-flag detectors over ingested data; idempotent recompute)
 --------------------------------------------------------------------------------
 docker compose run --rm app php artisan detect:run                       # all detectors inline + summary table
@@ -97,7 +126,12 @@ docker compose exec -T db psql -U liberhack -d liberhack -c "SELECT count(*) FRO
 --------------------------------------------------------------------------------
 docker compose run --rm app composer sync:api-types          # PHP #[TypeScript] -> apps/web/src/types/generated.d.ts
 docker compose run --rm app ./vendor/bin/pint                # format (use --test to only check)
-make lint
+make lint                                    # pint (Docker) + eslint (HOST)
+
+# Frontend tooling runs on the HOST (same place `make web` runs Vite):
+pnpm --dir apps/web typecheck                # tsc --noEmit
+pnpm --dir apps/web lint                     # eslint    (== make lint's frontend half)
+pnpm --dir apps/web test -- --run            # vitest    (== make test-fe)
 
 --------------------------------------------------------------------------------
  QUEUE  (async jobs — detectors, ingest, email, view-count flush)

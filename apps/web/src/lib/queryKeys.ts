@@ -13,5 +13,6 @@ export const queryKeys = {
   stats: () => ['stats'] as const,
   me: () => ['me'] as const,
   pendingFlags: () => ['admin', 'pending-flags'] as const,
+  adminFlagPost: (publicId: string) => ['admin', 'flag-post', publicId] as const,
   sources: () => ['admin', 'sources'] as const,
 };

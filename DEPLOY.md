@@ -6,10 +6,17 @@ Stage 2 (Kubernetes) is there for later if it grows. Same Docker images for both
 ```
 push git tag vX.Y.Z
    └─ GitHub Actions (release.yml): run tests → build images → push to GHCR
-        └─ VM pulls images → docker compose up -d → Caddy serves HTTPS → LIVE
+        └─ VM pulls images → docker compose up -d → migrate → rolling swap
+             └─ scrape → AI analyze (with caps) → ingest → detect → Caddy serves HTTPS → LIVE
 ```
 
 GitHub Actions never *hosts* the app — it only builds + ships the images. The VM runs them.
+
+**Four images** are built+pushed per tag: `svineklanitsa-api`, `svineklanitsa-web`,
+and the on-demand Python tools `svineklanitsa-scraper` + `svineklanitsa-ai`. The two
+tools are on the compose `tools` profile (not started by `up -d`) and share the
+`ingest_data` volume with `app`/`queue`, so their NDJSON + verdicts are what
+`php artisan ingest:run` reads.
 
 ==============================================================================
 STAGE 1 — ONE VM + DOCKER COMPOSE  (do this)
@@ -77,6 +84,34 @@ How the zero-downtime deploy works (release.yml `deploy` job):
   (for `COMPOSE_ENV_FILES`). `docker rollout` self-installs to
   `${DOCKER_CONFIG:-~/.docker}/cli-plugins` — the dir the host's `docker` actually
   reads (so it's found even when docker is invoked via `sudo`).
+
+## 6. Fresh data on every release — scrape → AI analyze → ingest → detect
+
+Once auto-deploy is on (§5), the deploy job also **refreshes the data** at the end
+of every release: for each source it runs the Python scraper, the AI analyzer, then
+`ingest:run`, then recomputes the detectors. All steps are **non-fatal** — a flaky
+upstream logs a warning but never fails an otherwise-good release. (Ingest-first:
+this runs *at deploy time*, never live during a demo.)
+
+Control it with repo **variables** (Settings → Secrets and variables → Actions → Variables):
+- **`SCRAPE_SOURCES`** — space/comma list of source ids to refresh on each deploy.
+  Defaults to `ted` when unset. Set it to `off` (or `none`) to skip scraping entirely.
+  Example: `SCRAPE_SOURCES = ted, nhif, mvr`.
+
+The analyzer's cost/concurrency caps come from **`.env.prod`** on the VM (used by the
+`ai` service's `env_file`), so the auto-run self-limits:
+- **`GOOGLE_API_KEY`** — Gemini key; without it the analyzer runs deterministic-only.
+- **`AGENTS_CAP`** — max **concurrent** agent calls in flight (async ceiling; default 8).
+- **`AGENTS_EVAL_CAP`** — max **total** LLM evaluations per run; `0` = unlimited (default 100).
+
+Run it by hand on the VM the same way the deploy does:
+```bash
+export COMPOSE_FILE=docker-compose.prod.yml COMPOSE_ENV_FILES=.env.prod
+docker compose --profile tools run --rm scraper uv run scrape --source ted
+docker compose --profile tools run --rm ai uv run analyze --source ted
+docker compose run --rm --no-deps app php artisan ingest:run --source=ted
+docker compose run --rm --no-deps app php artisan detect:run
+```
 
 ==============================================================================
 MONITORING  (bring up next to the app)

@@ -1,95 +1,233 @@
-# SOURCES — Свинекланица Watchdog
+# SOURCES.md — data provenance
 
-> **The iron rule:** every ingested record stores its `source_url` + `fetched_at`; every flag links to the primary source. **No source → no flag** (`.claude/rules/data-sources.md` §0).
-> This file is the canonical list of **where the data comes from**, mapped to the **Sphere → Category** model (`CLAUDE.md` §1.0). The *how* (NDJSON contract, idempotency, Cyrillic, politeness) lives in `.claude/rules/scraping.md`.
+> Every flag links to a primary source. **No source → no flag.** This file lists
+> every source the scraper (`apps/scraper`) pulls from: what we take, the format,
+> the natural key, and robots/terms notes. Required by `.claude/rules/scraping.md` §5.
 >
-> **Status legend:** ✅ verified reachable · 🟡 reachable, format/terms to confirm on-site · 🔴 not yet checked.
-> **Discipline:** public data only, polite scraping (robots + throttle), no login-walled or rate-abused sources. Last reviewed: **2026-06-06**.
+> Discipline: public data only · polite (robots, throttle, real UA) · ingest-first
+> (never hit upstream live in the demo) · raw + normalized kept for provenance.
 
----
+## How it flows
 
-## 1. Cross-cutting — public procurement (category `обществена поръчка`)
+```
+apps/scraper (Python)  ──NDJSON──▶  storage/ingest/normalized/<source>.ndjson
+                                    storage/ingest/raw/<source>/<hash>.<ext>   (provenance)
+                                    storage/ingest/samples/<source>.ndjson     (committed demo slice)
+                                          │
+                                          ▼
+                       php artisan ingest:run --source=<x>   (Laravel, idempotent upsert on natural_key)
+```
 
-These cover *all* spheres; filter by contracting authority to attribute to judiciary / healthcare / police.
+Run: `uv run scrape --source <x>` (or `--all`). List: `uv run scrape --list`.
 
-| Source | URL | What we pull | Format | Natural key | Status |
-|---|---|---|---|---|---|
-| **TED — Tenders Electronic Daily** (EU) | API: `https://docs.ted.europa.eu/api/latest/` · Open Data (SPARQL): `https://data.ted.europa.eu/` · CSV subset: `https://data.europa.eu/data/datasets/ted-csv` · bulk XML: TED portal | Above-threshold BG notices: authority, value, winner, awards | **Structured XML/CSV/JSON, no auth** ✅ best bulk source | TED notice id | ✅ |
-| **ЦАИС ЕОП** (central e-procurement) | `https://app.eop.bg/today` (UI) | Current tenders, authorities, bids, awards, contracts — the source of truth post-2020 | Web UI; export per-record; **open-data slices via data.egov.bg** | tender registry № | 🟡 (UI; check machine export) |
-| **АОП open data** (Агенция по обществени поръчки) | `https://www2.aop.bg/aop-publikuva-otvoreni-danni/` · register `https://www2.aop.bg/` | Annual register of public procurements (incl. historical / pre-ЕОП) | Open data files (per year) | registry № | 🟡 |
-| **data.egov.bg** (Open Data Portal) | `https://data.egov.bg` (AOP datasets: "Регистър на обществените поръчки") | Cleaned procurement datasets, framework agreements | Datasets / CKAN-style API | dataset row id | ✅ |
+## Sources
 
-**Demo strategy:** get **TED** ingesting **first** (cleanest bulk, no auth), then layer ЕОП/АОП for BG depth.
+### 🏥 Здравеопазване (healthcare flow)
 
----
+| id | Source | What we pull | Format | natural_key | Access / notes |
+|----|--------|--------------|--------|-------------|----------------|
+| **ncpr** | NCPR (НСЦРЛП) | Drug ceiling prices (benchmark) | CSV | product+holder hash | Open data (ncpr.bg) ✅ |
+| **nhif** | NHIF (НЗОК) | NHIF/RZOK tenders | HTML | procedure id / hash | Public profile ✅ |
+| **mz** | МЗ | Ministry of Health tenders | HTML | procedure id / hash | Public profile ✅ |
+| **mz_jobs** | МЗ Конкурси | Hospital director / board competitions | HTML | job id / hash | mh.government.bg/konkursi ✅ |
+| **mz_assets** | МЗ Активи | Sale of hospital equipment / vehicles | HTML | auction id / hash | Configurable; may be sparse |
 
-## 2. Cross-cutting — payments (category `нерегламентирани плащания`)
+### 🏛️ Съдебна система (judiciary flow)
 
-| Source | URL | What we pull | Format | Status |
-|---|---|---|---|---|
-| **СЕБРА — ежедневни бюджетни плащания** (Министерство на финансите) | `https://www.minfin.bg/bg/transparency` (daily, by date) | Every budget payment **≥ 5000 лв** (excl. salaries/insurance): payer, payee, amount, date, payment-type code | Daily reports + open data | ✅ |
-| **СЕБРА — тримесечни плащания (open data)** | `https://data.egov.bg` (quarterly individual payments ≥5000 лв) | Same, quarterly machine-readable slice — powers **contracted-vs-paid** (delayed-payment detector) | Open data | ✅ |
-| **СЕБРА кодове за вид плащане** (reference) | `https://e-gov.bg/.../sebra-info` | Lookup of payment-type codes (10–90) to label payments | Reference table | 🟡 |
+| id | Source | What we pull | Format | natural_key | Access / notes |
+|----|--------|--------------|--------|-------------|----------------|
+| **vss** | ВСС | Judiciary governing body tenders | HTML | procedure id / hash | Public profile ✅ |
+| **prb** | Прокуратура на РБ | Prosecutor's Office tenders | HTML | procedure id / hash | Public profile ✅ |
+| **vss_jobs** | ВСС Конкурси | Magistrate / admin competitions | HTML | job id / hash | vss.justice.bg ✅ |
+| **ivss_declarations** | ИВСС | Magistrate property declarations (ZSV art. 19a) | HTML table | row hash | inspectoratvss.bg ✅ |
+| **mjs_assets** | МП Активи | Sale of court buildings / vehicles | HTML | auction id / hash | mjs.bg ✅ |
 
-> Match a СЕБРА payment to a procurement contract (payer = authority, payee EIK = winner) → the contracted-vs-actually-paid timeline. Off-contract or chronically-late payments = the `нерегламентирани плащания` flag.
+### 👮 Полиция (police flow)
 
----
+| id | Source | What we pull | Format | natural_key | Access / notes |
+|----|--------|--------------|--------|-------------|----------------|
+| **mvr** | МВР | Police tenders (uniforms, gear) | HTML | procedure id / hash | Public profile ✅ |
+| **mvr_donations** | МВР Дарения | Register of donations to MVR | HTML | row hash | Public profile ✅ |
+| **mvr_jobs** | МВР Конкурси | Job competitions in MVR | HTML | job id / hash | Public profile ✅ |
+| **mvr_assets** | МВР Активи | Sale of state assets/real estate | HTML | auction id / hash | Public profile ✅ |
 
-## 3. Company / entity resolution (powers serial-winner & shell-company clustering)
+### 🏛️ Правителство (government flow)
 
-| Source | URL | What we pull | Format | Natural key | Status |
-|---|---|---|---|---|---|
-| **Търговски регистър** (Агенция по вписванията) | Portal `https://portal.registryagency.bg/` · **Register API** (JSON, daily) `https://www.registryagency.bg/bg/registri/targovski-registar/predostavyane-na-dostap-do-bazata-danni-na-targovskiya-registar/` · open-data dump on `data.egov.bg` | EIK/БУЛСТАТ, name, address, managers, owners, capital, status | JSON API / open-data dump (history, PII removed) | **EIK** | 🟡 (API access terms to confirm) |
+| id | Source | What we pull | Format | natural_key | Access / notes |
+|----|--------|--------------|--------|-------------|----------------|
+| **gov_tenders** | Министерски съвет | Council of Ministers procurement | HTML | procedure id / hash | government.bg ✅ |
+| **gov_jobs** | ИИСДА | Central administration job competitions | HTML | job id / hash | iisda.government.bg ✅ |
+| **gov_audits** | Сметна палата | State Audit Office reports | HTML | audit id / hash | bulnao.government.bg ✅ |
+| **gov_declarations** | КПКОНПИ | High-level official property declarations | HTML table | row hash | register.antikorupcia.bg ✅ |
+| **gov_concessions** | НКР | National Concession Register | HTML | concession id / hash | nkr.government.bg ✅ |
 
-> Unify companies on **EIK**, never name. Shared address / owner / phone across EIKs → shell-cluster signal.
+### 🛣️ Пътно строителство (roads flow)
 
----
+| id | Source | What we pull | Format | natural_key | Access / notes |
+|----|--------|--------------|--------|-------------|----------------|
+| **api_tenders** | АПИ | Road Infrastructure Agency procurement | HTML | procedure id / hash | api.bg ✅ |
+| **api_jobs** | АПИ Конкурси | Job competitions in API | HTML | job id / hash | api.bg ✅ |
+| **api_projects** | АПИ Проекти | Major infrastructure projects | HTML | project id / hash | api.bg ✅ |
+| **mrrb_tenders** | МРРБ | Ministry of Regional Development procurement | HTML | procedure id / hash | mrrb.bg ✅ |
+| **avtomagistrali_tenders** | Автомагистрали ЕАД | State-owned road company procurement | HTML | procedure id / hash | avtomagistrali.com ✅ |
 
-## 4. Sphere-specific contracting authorities (demo focus)
+### 🏛️ Cross-cutting (all spheres)
 
-Each ministry/body runs a **"профил на купувача"** (buyer profile) — primary-source tenders we can attribute to the sphere directly. Prefer pulling these via ЦАИС ЕОП/TED keyed by the authority; the profiles below are the human-readable fallback + provenance link.
+| id | Source | What we pull | Format | natural_key | Access / notes |
+|----|--------|--------------|--------|-------------|----------------|
+| **ted** | TED — Tenders Electronic Daily (`ted.europa.eu`) | EU notices incl. above-threshold BG tenders: title, buyer, value, CPV, dates | JSON (Search API v3, **POST** `api.ted.europa.eu/v3/notices/search`) | `publication-number` (e.g. `387269-2026`) | Open data. Default query `buyer-country=BGR`. ✅ live-verified, real BG sample committed. |
+| **egov** | data.egov.bg — National Open Data Portal | Procurement datasets (rows of whichever resource is configured) | JSON (custom API, **POST** `/api/getResourceData` with `resource_uri`) | resource_uri + row id/hash | Open re-use (PSI Directive). Set `EGOV_RESOURCES` to the resource_uri(s) on site. |
+| **caiseop** | ЦАИС ЕОП contracts (via data.egov.bg) | Awarded contracts: authority, winner (name+EIK), value, CPV, sign date | CSV (`;`-delimited, UTF-8/cp1251) | contract/registry number, else row hash | Public record. Set `CAISEOP_CSV_URLS` to the bulk CSV URL(s). Powers serial-winner + overpricing. |
+| **aop** | АОП / РОП — Register of public procurement (`aop.bg`) | Historical (pre-ЕОП) notices listing | HTML table | notice/decision number, else row hash | Public register; legacy cp1251. Set `AOP_PAGES`. |
+| **sebra** | SEBRA budget payments (via `minfin.bg` / open data) | Actual payments by spenders: spender, recipient, amount, date | CSV | row hash | Public. Powers the delayed-payments detector. Set `SEBRA_CSV_URLS`. |
+| **eop** | ЦАИС ЕОП search UI (`app.eop.bg`) | Modern central system search results | HTML (JS-rendered → Playwright) | doc id from URL, else hash | Public; needs `browser` extra. WAF/JS-heavy. Set `EOP_PAGES`. |
+| **isun** | ИСУН 2020 EU-funds (`2020.eufunds.bg`) | EU-funded beneficiaries, grant amounts | HTML (WAF → Playwright) | row hash | Public transparency data; WAF 403s non-browser. Needs `browser` extra. Set `ISUN_PAGES`. |
 
-### 🏛️ Съдебна система (judiciary)
-| Source | URL | What | Status |
-|---|---|---|---|
-| **ВСС — профил на купувача** (Висш съдебен съвет) | `https://profile-op.vss.justice.bg/` · info `https://vss.justice.bg/` | Procurements of the judiciary's governing body | 🟡 |
+## Embeddings (semantic search) — backend handoff
 
-### 🏥 Здравеопазване (healthcare)
-| Source | URL | What | Status |
-|---|---|---|---|
-| **НЗОК** (Национална здравноосигурителна каса) | `https://www.nhif.bg/` — contracts w/ hospitals/traders, paid activity-code prices (Excel), РЗОК contract lists | Payments to hospitals + contracted-activity prices → overpricing & payment detectors | 🟡 |
-| **Министерство на здравеопазването — профил на купувача** | `https://www.mh.government.bg/` (verify path) | Ministry-level medical procurement (equipment, drugs) | 🔴 |
+Vectors are produced **in Python** (`uv run embed --source <x>`) and written as a
+sidecar, keyed by `natural_key` so the normalized ingest contract is unchanged:
 
-### 👮 Полиция (police)
-| Source | URL | What | Status |
-|---|---|---|---|
-| **МВР — Дирекция „Обществени поръчки"** | `https://www.mvr.bg/dop` · buyer profiles under `mvr.bg/.../профил-на-купувача` | Ministry of Interior procurements (vehicles, gear, IT) | 🟡 |
+```
+storage/ingest/embeddings/<source>.ndjson
+{"source","natural_key","source_url","model","dim","text","embedding":[...float...]}
+```
 
----
+- **What we embed:** a composed searchable document per record (subject/title +
+  authority/winner names + CPV) — see `apps/scraper/src/scraper/searchable.py`.
+- **Model (default):** `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
+  via fastembed (ONNX, CPU). **dim = 384.** Multilingual incl. Bulgarian.
+  Configurable via `EMBED_MODEL` / `EMBED_BACKEND` (fastembed | sentence-transformers).
+- **Distance:** cosine (vectors are L2-normalized).
+- **Backend wiring (pgvector):** add a `vector(384)` column, load by joining the
+  sidecar on `natural_key`, index with HNSW (`vector_cosine_ops`), and embed the
+  search query with the **same** model. The same vectors also feed the
+  overpricing / doc-clone / serial-winner detectors (`backend.md` §12).
+- **Demo / proof:** `uv run search --source ted "компютърни монитори"` ranks the
+  matching notice first — pure Python, no backend needed.
 
-## 5. Backlog sphere — образование (category `конкурси за работа`, `CLAUDE.md` §1.4)
+## AI corruption verdicts — backend handoff
 
-Rigged hiring: short deadline + чл. 67 (КТ) + ultra-specific qualification. **Public РУО archives only.**
+The AI layer (`apps/ai`, LangChain + Gemini) reads the normalized corpus and
+writes a **verdict sidecar**, keyed by `natural_key` (the ingest contract is
+unchanged). Produce it with `uv run analyze --source <x>` (or one record with
+`uv run analyze-one --source <x> --natural-key <key>`, which the backend control
+panel calls on demand):
 
-| Source | URL | What | Status |
-|---|---|---|---|
-| **РУО — свободни работни места / конкурси** (28 regional offices) | e.g. Бургас `https://ruoburgas.bg/zaemane-na-dlyjnost.html` · Пловдив `https://www.ruoplovdiv.bg/jobs` · Варна `http://ruo-varna.bg/` · (one site per region) | Job adverts: position, deadline, required qualification, legal basis (чл. 67 / Наредба №15) | 🟡 |
-| **МОН — свободни работни места** | `https://www.mon.bg/` | Ministry-aggregated education vacancies | 🔴 |
+```
+storage/ingest/verdicts/<source>.ndjson
+{"source","natural_key","source_url","analyzed_at","model",
+ "corruption_score":0-100,"level","hard_tripped",
+ "sphere","category","flow_key",
+ "signals":[{key,family,code,risk,weight,contribution,value,source_field,rationale_bg}],
+ "flags":[{type,severity,subject,source_urls[],explanation_bg,evidence}],
+ "agent_outputs":{...},"headline_bg","explanation_bg"}
+```
 
----
+- **`flags[]` matches the backend Flag schema 1:1** (this file's §4 / `data-sources.md`):
+  `type, severity, subject, source_urls[], explanation_bg, evidence`. Ingest them
+  as `Flag` rows; store `corruption_score` + `level` as extra columns on the tender.
+- **Score = deterministic math** (auditable: every signal's weight + contribution
+  is in `signals[]`). Hard-trip rules force 99/100 on strong, sourced combinations;
+  otherwise a per-family noisy-OR is weighted and passed through a logistic.
+- **Levels:** `Корупция` (≥85 / hard-trip) · `Висок риск` (65–85) · `Съмнително`
+  (40–65) · `Нисък риск` (20–40) · `Нормално` (<20).
+- **Criteria catalog:** ~60 parameters grounded in Open Contracting R001–R073,
+  OECD bid-rigging, IACRC/DoD/GSA fraud schemes, World Bank/opentender CRI, real
+  КЗК cartel cases, and Benford's law — see `apps/ai/src/analyzer/features/`.
+- **No source → no flag** (the iron rule) is enforced in `scoring.py`.
+- A committed demo slice lives in `storage/ingest/samples/verdicts/<source>.ndjson`.
 
-## 6. Reference / aggregators (NOT primary sources for flags)
+### Healthcare AI flows (`здравеопазване`)
 
-For hero-case research and sanity-checks only — a flag must still cite a §1–§5 primary record, never one of these.
+Run: `uv run analyze --sphere healthcare` (shared NCPR drug index + all healthcare sources).
+
+| flow_key | category | Primary sources | Focus |
+|----------|----------|-----------------|-------|
+| `drugs` | лекарства | ncpr, pharma CPV | NCPR ceiling, INN steering, overpricing |
+| `procurement` | обществена поръчка | nhif, mz | Spec rigging, collusion, lifecycle |
+| `jobs` | конкурси за работа | mz_jobs | Rigged competitions, kinship/conflict |
+| `assets` | продажба на активи | mz_assets | Undervalued sales, restrictive auctions |
+
+Routing: source id → payload category → CPV 33xx → LLM `category_router` (Gemini 3.1 Flash Lite).
+
+### Judiciary AI flows (`съдебна система`)
+
+Run: `uv run analyze --sphere judiciary`.
+
+| flow_key | category | Primary sources | Focus |
+|----------|----------|-----------------|-------|
+| `procurement` | обществена поръчка | vss, prb | Spec rigging, collusion, lifecycle |
+| `jobs` | конкурси за работа | vss_jobs | Magistrate competitions, kinship/conflict |
+| `declarations` | нерегламентирани плащания | ivss_declarations | Unexplained wealth, late filings (ZSV 19a) |
+| `assets` | продажба на активи | mjs_assets | Undervalued court property sales |
+
+Routing: source id → payload category → heuristics → LLM `judiciary_category_router`.
+
+### Police AI flows (`полиция`)
+
+Run: `uv run analyze --sphere police`.
+
+| flow_key | category | Primary sources | Focus |
+|----------|----------|-----------------|-------|
+| `procurement` | обществена поръчка | mvr | Spec rigging, collusion, lifecycle |
+| `jobs` | конкурси за работа | mvr_jobs | Rigged competitions, kinship/conflict |
+| `assets` | продажба на активи | mvr_assets | Undervalued police property sales |
+| `donations` | дарения за МВР | mvr_donations | Donor influence, pay-to-play, repeat donors |
+
+Routing: source id → payload category → heuristics → LLM `police_category_router`.
+
+### Government AI flows (`правителство`)
+
+Run: `uv run analyze --sphere government`.
+
+| flow_key | category | Primary sources | Focus |
+|----------|----------|-----------------|-------|
+| `procurement` | обществена поръчка | gov_tenders | Spec rigging, collusion, lifecycle |
+| `jobs` | конкурси за работа | gov_jobs | Rigged competitions, kinship/conflict |
+| `audits` | одити | gov_audits | Financial mismanagement, audit findings |
+| `gov_declarations` | имуществени декларации | gov_declarations | Unexplained wealth, high-level official filings |
+| `concessions` | концесии | gov_concessions | Pay-to-play, long-term state contracts |
+
+Routing: source id → payload category → heuristics → LLM `government_category_router`.
+
+### Road Construction AI flows (`пътно строителство`)
+
+Run: `uv run analyze --sphere roads`.
+
+| flow_key | category | Primary sources | Focus |
+|----------|----------|-----------------|-------|
+| `procurement` | обществена поръчка | api_tenders, mrrb_tenders, avtomagistrali_tenders | Spec rigging, collusion, lifecycle |
+| `jobs` | конкурси за работа | api_jobs | Rigged competitions, kinship/conflict |
+| `projects` | инфраструктурни проекти | api_projects | Project delays, funding anomalies |
+
+Routing: source id → payload category → heuristics → LLM `roads_category_router`.
+
+## Conventions
+
+- **Cyrillic** stays Bulgarian, emitted UTF-8 (`ensure_ascii=false`); bytes are
+  decoded chardet → cp1251/utf-8 (`.claude/rules/scraping.md` §3).
+- **Companies** unify on **EIK** (БУЛСТАT, checksum-validated), not name.
+- **Money** is normalized to `{amount, currency}`; VAT/per-unit caveats noted downstream.
+- **Idempotent** on `natural_key`; re-running replaces, never appends.
+
+## Skipped for now (paywall / ToS-grey / heavy)
+
+- **Търговски регистър** (`portal.registryagency.bg`) — no free bulk; systematic
+  scraping is ToS-grey + CAPTCHA. Use EIK as the join key; curate owners if needed.
+- **Asset declarations** (`bulnao.government.bg`) — PDF/OCR + GDPR sensitivity.
+- **Court acts / State Gazette / lex.bg** — PDF-only / restrictive ToS.
+
+## Reference / aggregators (NOT primary sources for flags)
+
+For hero-case research and sanity-checks only — a flag must still cite a primary record, never one of these.
 
 | Source | URL | Use |
 |---|---|---|
 | **Данни за добро / Data for Good** — SEBRA visualization | `https://data-for-good.bg/posts/2022-01-20-sebra-visualization-bg/` | Prior art on SEBRA payment viz |
 | **Bivol / BIRD** | `https://bivol.bg` | Investigative leads on known cases |
 
----
-
-## 7. Static map geometry (frontend asset, not a flag source)
+## Static map geometry (frontend asset, not a flag source)
 
 | File | Source | Pulled | Format | License / terms |
 |---|---|---|---|---|
@@ -97,10 +235,9 @@ For hero-case research and sanity-checks only — a flag must still cite a §1�
 
 > Attribution (required): **© EuroGeographics for the administrative boundaries. Source: Eurostat GISCO.** The map keys on NUTS3 codes; Bulgarian display names live in `apps/web/src/lib/regions.ts`.
 
----
-
 ## Per-record provenance checklist (every ingested row)
-- [ ] `source` (which §1–§5 source) · `natural_key` (TED id / registry № / EIK)
+
+- [ ] `source` (which source) · `natural_key` (TED id / registry № / EIK / row hash)
 - [ ] `source_url` — a page/document a human can open · `fetched_at` (ISO-8601 UTC)
 - [ ] raw snapshot kept (re-parse without re-fetch) · `sphere` + `category` tagged where inferable
 - [ ] location (region/municipality, lat/lng) for the map where available

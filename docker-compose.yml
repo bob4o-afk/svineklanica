@@ -12,13 +12,23 @@ services:
       - "443:443"
     environment:
       APP_DOMAIN: ${APP_DOMAIN:-localhost}
+      # Dev default: the React app runs as Vite ON THE HOST (`make web` / `pnpm --dir apps/web dev`).
+      # Native host file-watching gives instant HMR, and `docker compose restart` never touches it
+      # — the in-container Vite is ~30x slower to first paint on the Windows/macOS bind mount and
+      # its file events don't reach the watcher. Caddy reaches the host server via
+      # host.docker.internal. To use the container Vite instead: start it with
+      # `docker compose --profile container-vite up -d web` and set WEB_UPSTREAM_HOST=web.
+      WEB_UPSTREAM_HOST: ${WEB_UPSTREAM_HOST:-host.docker.internal}
+    extra_hosts:
+      # So `host.docker.internal` resolves from inside the proxy on Linux too (Docker Desktop
+      # provides it automatically on Windows/macOS).
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
       - app
-      - web
 
   app:
     build:
@@ -70,7 +80,12 @@ services:
     depends_on:
       - app
 
+  # In-container Vite — OPT-IN only (profile "container-vite"). Default dev runs Vite on the host
+  # (see the `proxy` service notes) because the bind-mounted container Vite is ~30x slower to
+  # first paint on Windows/macOS and needs CPU-burning polling for HMR. Start explicitly with:
+  #   docker compose --profile container-vite up -d web   (and set WEB_UPSTREAM_HOST=web)
   web:
+    profiles: ["container-vite"]
     build:
       context: ./apps/web
       target: dev
@@ -81,6 +96,10 @@ services:
       # Flip to "true" only if you browse the direct http://localhost:5173 entry instead.
       # (One entry at a time — the two HMR modes are mutually exclusive.)
       VITE_HMR_DIRECT: "false"
+      # Docker Desktop on Windows doesn't forward host file-change events into the container, so
+      # without polling Vite never sees edits and HMR never fires ("nothing changes" on save).
+      # Polling restores live reload; the gentle interval (vite.config.ts) keeps it responsive.
+      VITE_USE_POLLING: "true"
     volumes:
       - ./apps/web:/app
       # Named (not anonymous) so Linux-built deps persist and `make install`
@@ -146,6 +165,22 @@ services:
     env_file: ./apps/scraper/.env
     volumes:
       - ./apps/scraper:/app
+      - ./storage/ingest:/data/ingest
+
+  # Python AI corruption-detector (apps/ai). On-demand only (profile "ai").
+  # Reads the scraper's normalized NDJSON, scores corruption risk with LangChain
+  # + Gemini, and writes a verdict sidecar into ./storage/ingest/verdicts that
+  # Laravel ingests. Build context is ./apps so the editable procurement-scraper
+  # path dependency (../scraper) resolves. Trigger an analysis with:
+  #   docker compose run --rm ai uv run analyze --source ted
+  ai:
+    build:
+      context: ./apps
+      dockerfile: ai/Dockerfile
+    profiles: ["ai"]
+    env_file: ./apps/ai/.env
+    volumes:
+      - ./apps:/app
       - ./storage/ingest:/data/ingest
 
 volumes:

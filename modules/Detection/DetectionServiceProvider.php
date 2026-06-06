@@ -6,6 +6,8 @@ namespace Modules\Detection;
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Modules\Detection\Console\Commands\AnalyzeIngestCommand;
+use Modules\Detection\Console\Commands\CorruptionTaxCommand;
 use Modules\Detection\Console\Commands\DetectRunCommand;
 use Modules\Detection\Contracts\FlagRepository;
 use Modules\Detection\Detectors\DetectorRegistry;
@@ -33,6 +35,8 @@ class DetectionServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 DetectRunCommand::class,
+                CorruptionTaxCommand::class,
+                AnalyzeIngestCommand::class,
             ]);
         }
     }

@@ -8,6 +8,7 @@ use App\Shared\Contracts\ProcurementReadPort;
 use App\Shared\DTO\CancelledTenderData;
 use App\Shared\DTO\CompanyWinData;
 use App\Shared\DTO\PriceObservationData;
+use App\Shared\DTO\TenderSubjectData;
 use App\Shared\Enums\CorruptionCategory;
 use App\Shared\Enums\Sphere;
 use Illuminate\Support\Facades\DB;
@@ -106,5 +107,34 @@ final class EloquentProcurementReadRepository implements ProcurementReadPort
                 statusLabel: $t->status->label(),
                 cancelledAt: $t->cancelled_at?->toIso8601String(),
             ))->all();
+    }
+
+    public function tenderSubjectsByNaturalKey(string $source): array
+    {
+        return Tender::query()
+            ->where('tenders.source', $source)
+            ->leftJoin('contracting_authorities', 'tenders.contracting_authority_id', '=', 'contracting_authorities.id')
+            ->get([
+                'tenders.id as id',
+                'tenders.natural_key as natural_key',
+                'tenders.title as title',
+                'tenders.source_url as source_url',
+                'tenders.cpv_code as cpv_code',
+                'tenders.sphere as sphere',
+                'tenders.category as category',
+                'contracting_authorities.region as region',
+            ])
+            ->mapWithKeys(fn (Tender $t): array => [
+                (string) $t->natural_key => new TenderSubjectData(
+                    tenderId: (int) $t->id,
+                    label: (string) $t->title,
+                    sourceUrl: (string) $t->source_url,
+                    cpv: $t->cpv_code !== null ? (string) $t->cpv_code : null,
+                    region: $t->region !== null ? (string) $t->region : null,
+                    sphere: $t->sphere,
+                    category: $t->category,
+                ),
+            ])
+            ->all();
     }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MoneyAmount } from '@/types/api';
-import { formatMoney, formatMoneyShort } from './money';
+import { formatMoney, formatMoneyAxis, formatMoneyShort } from './money';
 
 function bgn(amount: number, vatIncluded = true): MoneyAmount {
   return { amount, currency: 'BGN', vat_included: vatIncluded };
@@ -35,5 +35,19 @@ describe('formatMoneyShort', () => {
 
   it('uses the euro suffix for EUR', () => {
     expect(formatMoneyShort({ amount: 3_000_000, currency: 'EUR', vat_included: true })).toBe('3.0 млн €');
+  });
+});
+
+describe('formatMoneyAxis', () => {
+  it('keeps a whole thousand without a decimal', () => {
+    expect(formatMoneyAxis(bgn(2_000))).toBe('2 хил. лв');
+  });
+
+  it('shows one decimal for a half-thousand tick (so adjacent ticks stay distinct)', () => {
+    expect(formatMoneyAxis(bgn(1_500))).toBe('1,5 хил. лв');
+  });
+
+  it('keeps sub-thousand amounts as-is', () => {
+    expect(formatMoneyAxis(bgn(500))).toBe('500 лв');
   });
 });

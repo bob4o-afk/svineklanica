@@ -1,0 +1,47 @@
+[project]
+name = "procurement-analyzer"
+version = "0.0.0"
+description = "LangChain + Gemini multi-agent corruption-risk analyzer for the LiberHack procurement watchdog. Reads the scraper's normalized NDJSON corpus, scores corruption risk mathematically, and writes a verdict sidecar Laravel ingests."
+requires-python = ">=3.12"
+dependencies = [
+    "procurement-scraper",
+    "langchain-core>=0.3",
+    "langchain-google-genai>=4.0",
+    "pydantic>=2.7",
+    "numpy>=1.26",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+# Only if we later want a stateful graph instead of plain Runnables.
+graph = ["langgraph>=0.2"]
+
+[project.scripts]
+analyze = "analyzer.run:main"
+analyze-one = "analyzer.run:main_one"
+
+[dependency-groups]
+dev = ["ruff>=0.5", "pytest>=8.2"]
+
+# Reuse the scraper package (corpus / embeddings / normalize / searchable) without
+# copy-paste. Local dev + tests resolve it from ../scraper; the Docker image copies
+# both projects (build context ./apps) so this path still resolves.
+[tool.uv.sources]
+procurement-scraper = { path = "../scraper", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/analyzer"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "llm: hits the live Gemini API; skipped unless GOOGLE_API_KEY is set and --run-llm is passed",
+]

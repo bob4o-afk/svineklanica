@@ -61,3 +61,9 @@ docker compose run --rm scraper uv run scrape --source ted
 docker compose exec app php artisan ingest:run --source=ted
 ```
 
+## License
+
+**[GPL-3.0](LICENSE)** — copyleft on purpose: anyone may use, study, run, and build on Свинекланица,
+but **derivatives must stay open-source** under the same license. _„Бунтът е по-силен, когато може да
+бъде продължен от следващия."_
+

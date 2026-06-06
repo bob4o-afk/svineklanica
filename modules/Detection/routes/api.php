@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Detection\Http\Controllers\CalculatorController;
 use Modules\Detection\Http\Controllers\FlagController;
 
 // Loaded by DetectionServiceProvider under the 'api' middleware + '/api' prefix.
@@ -12,4 +13,8 @@ use Modules\Detection\Http\Controllers\FlagController;
 Route::middleware('throttle:public')->group(function (): void {
     Route::get('/flags', [FlagController::class, 'index'])->name('flags.index');
     Route::get('/flags/{flag}', [FlagController::class, 'show'])->name('flags.show');
+
+    // Corruption-tax calculator — "what % of your taxes funded flagged deals".
+    Route::post('/calculator/corruption-tax', [CalculatorController::class, 'corruptionTax'])
+        ->name('calculator.corruption-tax');
 });

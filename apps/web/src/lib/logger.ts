@@ -1,10 +1,11 @@
 import { env } from '@/config/env';
+import { captureError } from '@/lib/monitoring';
 
 type LogContext = Record<string, unknown>;
 type LogLevel = 'error' | 'warn' | 'info';
 
 /** The ONE sanctioned place that may touch `console` (ESLint no-console is disabled
- *  for that line only). Phase 5 wires Sentry/remote logging here. */
+ *  for that line only). `error` also forwards to remote monitoring (Sentry) via `captureError`. */
 function emit(level: LogLevel, message: string, context?: LogContext): void {
   // eslint-disable-next-line no-console
   const sink = level === 'error' ? console.error : level === 'warn' ? console.warn : console.info;
@@ -18,6 +19,7 @@ function emit(level: LogLevel, message: string, context?: LogContext): void {
 export const logger = {
   error(message: string, context?: LogContext): void {
     emit('error', message, context);
+    captureError(message, context);
   },
   warn(message: string, context?: LogContext): void {
     emit('warn', message, context);

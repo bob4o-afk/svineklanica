@@ -124,6 +124,18 @@ body::after {
   flex-shrink: 0;
 }
 
+/* ── HERO SCROLL HINT ────────────────────────────────────────────────────────────
+   The caret under the pinned hero nudges down to signal there's more below the fold. */
+@keyframes app-hero-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .punk-live-dot,
+  [style*='app-hero-bounce'] { animation: none !important; }
+}
+
 /* ── TEXT SELECTION ──────────────────────────────────────────────────────────────
    Red selection highlight — makes text selection feel aggressive. */
 ::selection {

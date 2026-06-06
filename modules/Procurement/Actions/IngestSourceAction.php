@@ -9,10 +9,8 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use JsonException;
 use Modules\Procurement\Contracts\IngestRecordRepository;
-use Modules\Procurement\Contracts\TenderIngestRepository;
 use Modules\Procurement\Data\IngestSummary;
-use Modules\Procurement\Enums\TenderStatus;
-use Modules\Procurement\Services\SphereClassifier;
+use Modules\Procurement\Ingest\PayloadMapperRegistry;
 
 /**
  * Reads the scraper's NDJSON contract and idempotently upserts it into the DB
@@ -22,17 +20,11 @@ use Modules\Procurement\Services\SphereClassifier;
  * Each NDJSON line is an IngestRecord (apps/scraper/.../contract.py):
  *   { source, natural_key, source_url, fetched_at, schema_version, payload }
  *
- * The internal shape of `payload` is the seam to finalize with the (separate)
- * scraper branch. This mapper assumes the following normalized fields and skips
- * anything missing rather than failing:
- *   payload: {
- *     title, description?, cpv_code?, value?, currency?, vat_included?,
- *     status?: announced|open|awarded|cancelled|terminated,
- *     announced_at?, deadline_at?, awarded_at?, cancelled_at?,
- *     authority?: { name, eik?, region?, source_url? },
- *     winner?:    { name, eik?, address?, owner_name?, phone?, source_url? },
- *     items?: [ { description, quantity?, unit?, unit_price?, currency?, vat_included? } ]
- *   }
+ * The `payload` is the canonical v2 envelope: a shared header (record_type,
+ * sphere, category, title, authority, winner) plus exactly ONE typed block keyed
+ * by `record_type`. This action owns only the provenance row + the dispatch; the
+ * per-type domain mapping lives in a {@see PayloadMapperRegistry} mapper, so a new
+ * source type is one new typed block (contract.py) + one new mapper, nothing here.
  */
 final class IngestSourceAction
 {
@@ -40,8 +32,7 @@ final class IngestSourceAction
 
     public function __construct(
         private readonly IngestRecordRepository $records,
-        private readonly TenderIngestRepository $tenders,
-        private readonly SphereClassifier $classifier,
+        private readonly PayloadMapperRegistry $mappers,
         private readonly LoggingService $log,
     ) {}
 
@@ -136,58 +127,24 @@ final class IngestSourceAction
     {
         DB::transaction(function () use ($source, $record): void {
             $fetchedAt = Carbon::parse((string) $record['fetched_at']);
+            $naturalKey = (string) $record['natural_key'];
+            $sourceUrl = (string) $record['source_url'];
             /** @var array<string, mixed> $payload */
             $payload = is_array($record['payload']) ? $record['payload'] : [];
 
-            // 1. Provenance landing row.
+            // 1. Provenance landing row (every record, regardless of type).
             $ingest = $this->records->upsert(
                 $source,
-                (string) $record['natural_key'],
-                (string) $record['source_url'],
+                $naturalKey,
+                $sourceUrl,
                 $fetchedAt,
                 (int) ($record['schema_version'] ?? 1),
                 $payload,
             );
 
-            // 2. Map normalized payload → domain rows.
-            $authority = isset($payload['authority']) && is_array($payload['authority'])
-                ? $this->tenders->upsertAuthority($payload['authority'])
-                : null;
-
-            $winner = isset($payload['winner']) && is_array($payload['winner'])
-                ? $this->tenders->upsertCompany($payload['winner'])
-                : null;
-
-            // Tag the record with its Sphere → Category (CLAUDE.md §1.0) so flags/feed
-            // are filterable; sphere stays null when it can't be inferred (no guessing).
-            $classification = $this->classifier->classify(
-                $authority?->name,
-                isset($payload['cpv_code']) ? (string) $payload['cpv_code'] : null,
-                $source,
-            );
-
-            $tender = $this->tenders->upsertTender($source, (string) $record['natural_key'], [
-                'source_url' => (string) $record['source_url'],
-                'fetched_at' => $fetchedAt,
-                'contracting_authority_id' => $authority?->id,
-                'winner_company_id' => $winner?->id,
-                'title' => (string) ($payload['title'] ?? '(без заглавие)'),
-                'description' => $payload['description'] ?? null,
-                'cpv_code' => $payload['cpv_code'] ?? null,
-                'sphere' => $classification->sphere,
-                'category' => $classification->category,
-                'value' => $payload['value'] ?? null,
-                'currency' => $payload['currency'] ?? null,
-                'vat_included' => $payload['vat_included'] ?? null,
-                'status' => $this->mapStatus($payload['status'] ?? null),
-                'announced_at' => $payload['announced_at'] ?? null,
-                'deadline_at' => $payload['deadline_at'] ?? null,
-                'awarded_at' => $payload['awarded_at'] ?? null,
-                'cancelled_at' => $payload['cancelled_at'] ?? null,
-            ]);
-
-            $items = isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : [];
-            $this->tenders->syncItems($tender, $items, $fetchedAt);
+            // 2. Dispatch the typed payload → domain rows (tender / payment / …).
+            $recordType = isset($payload['record_type']) ? (string) $payload['record_type'] : null;
+            $this->mappers->for($recordType)->map($source, $naturalKey, $sourceUrl, $fetchedAt, $payload);
 
             $this->records->markIngested($ingest);
         });

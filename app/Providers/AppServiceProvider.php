@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 use Modules\Procurement\Models\Company;
 use Modules\Procurement\Models\ContractingAuthority;
+use Modules\Procurement\Models\Payment;
 use Modules\Procurement\Models\Tender;
 
 class AppServiceProvider extends ServiceProvider
@@ -26,6 +27,7 @@ class AppServiceProvider extends ServiceProvider
             'tender' => Tender::class,
             'company' => Company::class,
             'authority' => ContractingAuthority::class,
+            'payment' => Payment::class,
         ]);
     }
 }

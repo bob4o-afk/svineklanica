@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Presentation\Data;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Modules\Detection\Models\Flag;
 use Spatie\LaravelData\Attributes\MapName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\SnakeCaseMapper;
@@ -26,7 +27,7 @@ final class PaginatedFlagPostData extends Data
     ) {}
 
     /**
-     * @param  LengthAwarePaginator<int, \Modules\Detection\Models\Flag>  $paginator
+     * @param  LengthAwarePaginator<int, Flag>  $paginator
      * @param  array<string, int>  $viewCounts  live view totals keyed by public_id (falls back to the DB column)
      */
     public static function fromPaginator(LengthAwarePaginator $paginator, array $viewCounts = []): self

@@ -32,6 +32,11 @@ export function feedQueryOptions(query: FlagFeedQuery = {}) {
       const loaded = lastPage.page * lastPage.per_page;
       return loaded < lastPage.total ? lastPage.page + 1 : undefined;
     },
+    // The feed is the home/feed hero content — cache it generously and serve stale-while-
+    // revalidate so navigating away and back is instant instead of re-hitting the API every
+    // time (frontend.md §9). Fresh for 5 min; kept in cache 30 min for instant remounts.
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
   });
 }
 

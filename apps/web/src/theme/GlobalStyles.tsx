@@ -22,6 +22,10 @@ export function GlobalStyles() {
           theme.palette.mode === 'dark' ? 'rgba(244, 241, 234, 0.26)' : 'rgba(10, 10, 10, 0.30)';
         return {
           'html, body, #root': { height: '100%' },
+          // `overflow-x: clip` kills the sideways shift on mobile caused by the full-bleed
+          // fixed decorations (watermark at 200% width, the diagonal `body::after` line) without
+          // establishing a scroll container — so `position: sticky` (header + hero) keeps working.
+          'html, body': { maxWidth: '100%', overflowX: 'clip' },
           body: { margin: 0 },
           '*:focus-visible': {
             outline: `2px solid ${theme.palette.primary.main}`,

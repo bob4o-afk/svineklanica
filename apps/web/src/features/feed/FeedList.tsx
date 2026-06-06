@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { AppButton } from '@/components/controls/AppButton';
 import { AppEmptyState } from '@/components/feedback/AppEmptyState';
 import { AppErrorState } from '@/components/feedback/AppErrorState';
-import { AppSkeleton } from '@/components/feedback/AppSkeleton';
 import { AppFlagPostCard } from '@/components/flags/AppFlagPostCard';
+import { AppFlagPostCardSkeleton } from '@/components/flags/AppFlagPostCardSkeleton';
+import { AppReveal } from '@/components/motion/AppReveal';
 import { useFlagFeed } from '@/hooks/queries/useFlagFeed';
 import type { FlagFeedQuery } from '@/types/api';
 
@@ -20,7 +21,16 @@ export function FeedList({ query = {}, limit }: FeedListProps) {
   const { t } = useTranslation();
   const feed = useFlagFeed(query);
 
-  if (feed.isPending) return <AppSkeleton count={limit ?? 4} />;
+  if (feed.isPending) {
+    // Card-shaped skeletons so the feed reserves the real сигнал-card size (no layout jump).
+    return (
+      <Stack spacing={2} aria-busy="true" aria-live="polite">
+        {Array.from({ length: limit ?? 4 }, (_, i) => (
+          <AppFlagPostCardSkeleton key={i} />
+        ))}
+      </Stack>
+    );
+  }
   // Only take over the whole view when there's nothing to show. A failed background refetch /
   // fetchNextPage keeps the already-loaded cards on screen (the "load more" button retries).
   if (feed.isError && feed.data === undefined) {
@@ -42,8 +52,12 @@ export function FeedList({ query = {}, limit }: FeedListProps) {
 
   return (
     <Stack spacing={2}>
-      {shown.map((flag) => (
-        <AppFlagPostCard key={flag.public_id} flag={flag} />
+      {shown.map((flag, index) => (
+        // Cards fade/slide in as they scroll into view; the stagger caps so a long page never
+        // waits seconds for the last card (the modulo keeps each newly-loaded batch lively).
+        <AppReveal key={flag.public_id} delay={(index % 5) * 70}>
+          <AppFlagPostCard flag={flag} />
+        </AppReveal>
       ))}
       {limit === undefined && feed.hasNextPage ? (
         <AppButton

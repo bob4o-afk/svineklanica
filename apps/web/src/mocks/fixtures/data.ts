@@ -9,7 +9,9 @@ import type {
   FlagSubject,
   FlagType,
   PriceSeries,
+  PunkTag,
   SerialWinnerGraph,
+  Source,
   SourceRef,
   TenderRef,
 } from '@/types/api';
@@ -87,6 +89,20 @@ function buildSubject(
   return { type: 'tender', authority, tender };
 }
 
+/** Editorial punk tags an editor would slap on at publish time (CLAUDE.md §1.0.1). Deterministic
+ *  from type/severity so approved fixtures already show the "шуши-муши" layer in the feed. */
+function tagsFor(type: FlagType, severity: FlagSeverity): PunkTag[] {
+  const tags: PunkTag[] = [];
+  if (type === 'price_discrepancy' || type === 'implausible_scope' || type === 'delayed_payment') {
+    tags.push('theft');
+  }
+  if (type === 'serial_winner' || type === 'cancelled' || type === 'tailored_spec') {
+    tags.push('dodgy_deal');
+  }
+  if (type === 'doc_clone' || severity === 'critical') tags.push('shushi_mushi');
+  return tags;
+}
+
 function buildFlag(index: number, rng: () => number): FlagPost {
   const type = pick(WEIGHTED_TYPES, rng());
   const severity = pick(WEIGHTED_SEVERITIES, rng());
@@ -101,6 +117,7 @@ function buildFlag(index: number, rng: () => number): FlagPost {
   const amount = intBetween(50_000, 4_000_000, rng());
   const detectedAt = daysAgoISO(index);
   const approved = index < APPROVED_COUNT;
+  const tags = tagsFor(type, severity);
 
   const headlineInput = { authority: authority.name, company: company.name, multiplier, count };
 
@@ -133,6 +150,7 @@ function buildFlag(index: number, rng: () => number): FlagPost {
     detected_at: detectedAt,
     ...(approved ? { published_at: detectedAt } : {}),
     ...(isPriceFlag ? { series_key: 'laptops' } : {}),
+    ...(approved && tags.length > 0 ? { tags } : {}),
   };
 }
 
@@ -144,15 +162,17 @@ export const pendingFlags: FlagPost[] = flagPosts.filter((f) => f.status === 'pe
 
 // --- One curated price series (the "price creep" story) ---
 const laptopVendors = [companies[0], companies[2], companies[4]] as const;
+// Mostly a believable upward creep, with one rigged tender (index 2) wildly overpriced — the
+// textbook overpricing signal the price chart highlights (CLAUDE.md §1.1.1, frontend.md §10).
+const laptopUnitPrices = [1400, 1780, 4200, 2160, 2540, 2920];
 export const priceSeriesByKey: Record<string, PriceSeries> = {
   laptops: {
     series_key: 'laptops',
     product_label: 'Лаптоп 15" i5 / 16GB RAM',
     cpv_code: '30213100',
     unit: 'бр.',
-    points: Array.from({ length: 6 }, (_, i) => {
+    points: laptopUnitPrices.map((unitPrice, i) => {
       const vendor = laptopVendors[i % laptopVendors.length];
-      const unitPrice = 1400 + i * 380;
       return {
         captured_at: daysAgoISO(150 - i * 25),
         price: { amount: unitPrice, currency: 'BGN' as const, vat_included: true },
@@ -186,3 +206,40 @@ export const serialWinnerGraphById: Record<string, SerialWinnerGraph> = {
 
 // Region aggregates are computed dynamically in the MSW handler from the flags above
 // (grouped by the authority's region_code, optionally filtered by sector) — see mocks/handlers.
+
+// --- Data sources (the admin „Източници" registry — mirrors SOURCES.md / data-sources.md) ---
+export const sourceSeed: Source[] = [
+  {
+    public_id: 'src-1',
+    key: 'ted',
+    label: 'TED — Tenders Electronic Daily',
+    base_url: 'https://ted.europa.eu',
+    enabled: true,
+    last_ingested_at: daysAgoISO(1),
+    notes: 'Структуриран bulk източник без вход — демо приоритет.',
+  },
+  {
+    public_id: 'src-2',
+    key: 'egov',
+    label: 'data.egov.bg — Портал за отворени данни',
+    base_url: 'https://data.egov.bg',
+    enabled: true,
+    last_ingested_at: daysAgoISO(3),
+  },
+  {
+    public_id: 'src-3',
+    key: 'aop',
+    label: 'АОП / РОП — Регистър на обществените поръчки',
+    base_url: 'https://aop.bg',
+    enabled: false,
+    notes: 'Историческа дълбочина; за скрейпване по-късно.',
+  },
+  {
+    public_id: 'src-4',
+    key: 'sebra',
+    label: 'СЕБРА — бюджетни разплащания',
+    base_url: 'https://minfin.bg',
+    enabled: false,
+    notes: 'Захранва детектора „забавени плащания".',
+  },
+];

@@ -19,9 +19,9 @@ use Modules\Presentation\Support\SectorResolver;
 final class FlagFeedFilterData
 {
     /**
-     * @param  int[]  $typeValues       FlagType backing ints
-     * @param  string[]  $sectors       ProcurementSector strings
-     * @param  string[]  $severities    FlagSeverity backing ints (as int[])
+     * @param  int[]  $typeValues  FlagType backing ints
+     * @param  string[]  $sectors  ProcurementSector strings
+     * @param  string[]  $severities  FlagSeverity backing ints (as int[])
      */
     public function __construct(
         public array $typeValues,

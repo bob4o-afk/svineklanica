@@ -7,6 +7,7 @@ namespace App\Shared\Contracts;
 use App\Shared\DTO\CancelledTenderData;
 use App\Shared\DTO\CompanyWinData;
 use App\Shared\DTO\PriceObservationData;
+use App\Shared\DTO\TenderSubjectData;
 
 /**
  * Read port the Detection module uses to pull the procurement data its detectors
@@ -24,4 +25,12 @@ interface ProcurementReadPort
 
     /** @return array<int, CancelledTenderData> Tenders cancelled or terminated by the authority. */
     public function cancelledTenders(): array;
+
+    /**
+     * Resolve a source's tenders by natural_key, so the AI verdict ingest can attach
+     * each verdict's Flag to the right tender subject (AnalyzeIngest).
+     *
+     * @return array<string, TenderSubjectData> keyed by natural_key
+     */
+    public function tenderSubjectsByNaturalKey(string $source): array;
 }

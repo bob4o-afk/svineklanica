@@ -115,7 +115,7 @@ _Not in the first demo cut unless time allows — but the model (§1.0) already 
 2. **Nothing illegal.** No unauthorized access to systems. Use **public data, scraping of public pages, OSINT of public info** only. (We have offensive-sec skills available — *authorized* targets only; **never point them at live third-party systems.**)
 3. **No disinformation.** Every claim/critique is sourced to a primary record. If we can't back it, we don't ship it.
 4. **Real Bulgarian targets only.** No fictional institutions/datasets for the core.
-5. **Open Source license is MANDATORY.** Ship under an OSS license before the demo — _"бунтът е по-силен, когато може да бъде продължен от следващия."_ → The repo currently ships **GPL-3.0** (`LICENSE`) — strong copyleft teeth, punk-appropriate. ⚠️ **TEAM DECISION (open):** GPL-3.0 vs MIT — the original scaffold suggested MIT; we kept GPL. Pick one before the demo and make this line match the `LICENSE` file.
+5. **Open Source license is MANDATORY.** Ship under an OSS license before the demo — _"бунтът е по-силен, когато може да бъде продължен от следващия."_ → **DECIDED: GPL-3.0** (`LICENSE`) — strong copyleft teeth, punk-appropriate (any fork must stay open). Aligned across `LICENSE`, `apps/web/package.json` (`GPL-3.0-or-later`), and README §License.
 
 ---
 
@@ -204,7 +204,7 @@ Concrete work items from the latest direction change. Tick as shipped.
 - **Real data source(s) wired in:** _TBD (see `.claude/rules/data-sources.md`)_
 - **The hero demo case (a real, named BG scandal):** _TBD_
 - **The roast / one-liner for the pitch:** _TBD_
-- **License:** _TBD (MIT / AGPL-3.0)_
+- **License:** **GPL-3.0** (decided) — `LICENSE` + `apps/web/package.json` (`GPL-3.0-or-later`)
 
 ---
 

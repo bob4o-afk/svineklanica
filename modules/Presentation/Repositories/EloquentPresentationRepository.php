@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\Presentation\Repositories;
 
+use App\Shared\Enums\FlagSeverity;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use App\Shared\Enums\FlagSeverity;
 use Modules\Detection\Models\Flag;
 use Modules\Presentation\Contracts\PresentationRepository;
 use Modules\Presentation\Data\FlagFeedFilterData;

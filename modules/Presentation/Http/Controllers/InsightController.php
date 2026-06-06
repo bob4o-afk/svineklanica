@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Modules\Presentation\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Modules\Detection\Enums\FlagType;
 use Modules\Presentation\Contracts\PresentationRepository;
 use Modules\Presentation\Data\GraphEdgeData;
 use Modules\Presentation\Data\GraphNodeData;
-use Modules\Detection\Enums\FlagType;
 use Modules\Presentation\Data\PlatformStatsData;
+use Modules\Presentation\Data\PricePointData;
 use Modules\Presentation\Data\PriceSeriesData;
 use Modules\Presentation\Data\RegionAggregateData;
 use Modules\Presentation\Data\SerialWinnerGraphData;
@@ -49,7 +50,7 @@ final class InsightController
             cpvCode: $tender?->cpv_code ?? Optional::create(),
             unit: $item?->unit ?? Optional::create(),
             points: $snapshots->map(
-                static fn ($s) => \Modules\Presentation\Data\PricePointData::fromModel($s)
+                static fn ($s) => PricePointData::fromModel($s)
             )->all(),
         );
     }

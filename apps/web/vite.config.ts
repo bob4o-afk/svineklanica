@@ -58,7 +58,7 @@ export default defineConfig({
       // unconditionally, so without this the SW would fight MSW's mock worker for control
       // of the page and make /api/* requests fall through (404). PWA is a production concern.
       devOptions: { enabled: false },
-      includeAssets: ['favicon.svg', 'robots.txt'],
+      includeAssets: ['favicon.svg', 'robots.txt', 'apple-touch-icon-180x180.png'],
       manifest: {
         name: BRAND.name,
         short_name: BRAND.short,
@@ -68,8 +68,14 @@ export default defineConfig({
         background_color: palette.ink,
         display: 'standalone',
         start_url: '/',
-        // SVG icon scales to every size; PNG/maskable set is a Phase-5 polish.
-        icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
+        // Raster icons (generated from favicon.svg via `pnpm gen:icons`) for installability +
+        // a maskable variant for Android adaptive icons; the SVG stays as the scalable fallback.
+        icons: [
+          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+        ],
       },
     }),
   ],
@@ -79,6 +85,22 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // Vite 5.4.12+/8 blocks requests whose Host header isn't allow-listed (DNS-rebinding guard),
+    // returning 403. Caddy proxies https://localhost preserving Host: localhost (allowed), but
+    // the `web` service name and any custom APP_DOMAIN must be listed explicitly or the proxied
+    // request 403s ("not loading"). Override/extend via VITE_ALLOWED_HOSTS (comma-separated).
+    allowedHosts: (process.env.VITE_ALLOWED_HOSTS ?? `localhost,web,${process.env.APP_DOMAIN ?? ''}`)
+      .split(',')
+      .map((host) => host.trim())
+      .filter((host) => host !== ''),
+    // Docker Desktop on Windows doesn't forward host filesystem (inotify) events into the Linux
+    // container, so Vite's watcher won't see edits and HMR won't fire automatically — a manual
+    // reload still picks up changes (Vite reads from disk per request). Opt into polling for live
+    // HMR by setting VITE_USE_POLLING=true; it's left OFF by default because aggressive polling
+    // over the slow Windows bind mount pins a CPU core and can stall the dev server.
+    ...(process.env.VITE_USE_POLLING === 'true'
+      ? { watch: { usePolling: true, interval: 1000, binaryInterval: 1500 } }
+      : {}),
     // Direct http://localhost:5173 access now talks to the REAL backend (the mock layer is
     // gone). Caddy already routes /api → app for the canonical https://localhost URL; this
     // proxy gives the same reach when hitting Vite directly. Target is the app service on the

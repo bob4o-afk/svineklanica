@@ -1,17 +1,19 @@
-import { AppBar, Box, Fade, Menu, MenuItem, Stack, Toolbar, useScrollTrigger } from '@mui/material';
+import { AppBar, Box, Fade, Stack, Toolbar, useScrollTrigger } from '@mui/material';
 import { ListIcon, MagnifyingGlassIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AppColorModeToggle } from '@/components/controls/AppColorModeToggle';
 import { AppIconButton } from '@/components/controls/AppIconButton';
 import { AppLink } from '@/components/controls/AppLink';
 import { BRAND } from '@/config/brand';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { paths } from '@/routes/paths';
 import { fonts } from '@/theme/typography';
 import { AppBrandmark } from './AppBrandmark';
+import { type AppNavItem, AppNavDrawer } from './AppNavDrawer';
 
-const NAV_ITEMS: ReadonlyArray<{ to: string; labelKey: string }> = [
+const NAV_ITEMS: ReadonlyArray<AppNavItem> = [
   { to: paths.feed, labelKey: 'common:nav.feed' },
   { to: paths.map, labelKey: 'common:nav.map' },
   { to: paths.about, labelKey: 'common:nav.about' },
@@ -24,9 +26,9 @@ export function AppHeader() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const menuOpen = anchorEl !== null;
-  const closeMenu = () => setAnchorEl(null);
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = () => setMenuOpen(false);
 
   const isHome = pathname === paths.home;
   // On the homepage the hero IS the branding, so the logo only appears once you scroll past it
@@ -88,21 +90,20 @@ export function AppHeader() {
         <AppIconButton
           label={t('common:nav.menu')}
           color="inherit"
-          onClick={(event) => setAnchorEl(event.currentTarget)}
-          aria-haspopup="menu"
+          onClick={() => setMenuOpen(true)}
+          aria-haspopup="dialog"
           aria-expanded={menuOpen}
-          {...(menuOpen ? { 'aria-controls': 'app-nav-menu' } : {})}
           sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
         >
           <ListIcon size={20} />
         </AppIconButton>
-        <Menu id="app-nav-menu" anchorEl={anchorEl} open={menuOpen} onClose={closeMenu}>
-          {NAV_ITEMS.map((item) => (
-            <MenuItem key={item.to} component={RouterLink} to={item.to} onClick={closeMenu}>
-              {t(item.labelKey)}
-            </MenuItem>
-          ))}
-        </Menu>
+
+        {/* Phone nav: kept out of the desktop DOM (inline links above serve there), but still
+            rendered the moment it's opened so a tap always shows it even if the breakpoint check
+            hasn't resolved yet (useIsMobile, leha convention). */}
+        {isMobile || menuOpen ? (
+          <AppNavDrawer open={menuOpen} onClose={closeMenu} items={NAV_ITEMS} />
+        ) : null}
       </Toolbar>
     </AppBar>
   );
