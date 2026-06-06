@@ -7,6 +7,7 @@ namespace Modules\Publishing\Data;
 use Modules\Publishing\Enums\PostStatus;
 use Modules\Publishing\Models\Post;
 use Spatie\LaravelData\Data;
+use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /** API shape of a post — exposes public_id, never the internal id (backend.md §7). */
@@ -23,6 +24,7 @@ final class PostData extends Data
         public PostStatus $status,
         public int $viewCount,
         public ?string $authorName,
+        #[LiteralTypeScriptType('string[]')]
         public array $sourceUrls,
         public ?string $publishedAt,
     ) {}

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // Bulgarian-first enum labels (backend.md §10). Keys mirror the enum case names
 // (snake_case) used by each enum's label() method.
 return [

@@ -36,6 +36,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: ./Dockerfile.prod
           target: prod
           push: true
           tags: |
@@ -60,18 +61,54 @@ jobs:
     if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - name: SSH in, pull new images, migrate
+      - name: SSH in, pull, migrate, ROLLING (zero-downtime) swap
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_SSH_HOST }}
           username: ${{ secrets.DEPLOY_SSH_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            set -e
             cd ${{ secrets.DEPLOY_PATH }}
-            sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${{ github.ref_name }}/" .env || echo "IMAGE_TAG=${{ github.ref_name }}" >> .env
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
-            docker compose -f docker-compose.prod.yml exec -T app php artisan migrate --force
+
+            # Make compose AND docker-rollout use the prod file + env for ${...} interpolation.
+            export COMPOSE_FILE=docker-compose.prod.yml
+            export COMPOSE_ENV_FILES=.env.prod
+            TAG="${{ github.ref_name }}"
+
+            # Install the docker-rollout CLI plugin on first run (scales a service up,
+            # waits for the new container's healthcheck, then drains the old one).
+            if ! docker rollout --help >/dev/null 2>&1; then
+              mkdir -p ~/.docker/cli-plugins
+              curl -fsSL https://raw.githubusercontent.com/Wowu/docker-rollout/master/docker-rollout \
+                -o ~/.docker/cli-plugins/docker-rollout
+              chmod +x ~/.docker/cli-plugins/docker-rollout
+            fi
+
+            # Point the stack at the freshly built tag, then pull the images.
+            sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${TAG}/" .env.prod || echo "IMAGE_TAG=${TAG}" >> .env.prod
+            docker compose pull
+
+            # Infra first (no-op if already running).
+            docker compose up -d --no-deps db redis
+
+            # Migrate with the NEW image, before swapping the app in (keep migrations
+            # backward-compatible so the old container still works during the overlap).
+            docker compose run --rm --no-deps app php artisan migrate --force
+
+            # Zero-downtime rolling swap of the web-facing services. First deploy has
+            # nothing to roll, so fall back to a plain up for those.
+            for svc in app web; do
+              if docker compose ps --status running --services | grep -qx "$svc"; then
+                docker rollout "$svc"
+              else
+                docker compose up -d "$svc"
+              fi
+            done
+
+            # Background workers + edge proxy: recreate with the new image (no inbound
+            # traffic hits the workers, and the proxy reload is graceful).
+            docker compose up -d --no-deps queue scheduler proxy
 
   notify:
     name: Email release notifier

@@ -16,7 +16,7 @@ interface IngestRecordRepository
     /**
      * Idempotent upsert on (source, natural_key).
      *
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
     public function upsert(
         string $source,

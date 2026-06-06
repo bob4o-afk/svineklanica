@@ -69,7 +69,7 @@ final class FakeDataSandbox
     {
         // A tiny LCG so values are varied but reproducible from the seed.
         $rng = static function (int $s, int $mod): int {
-            return (int) (($s * 1103515245 + 12345) & 0x7fffffff) % $mod;
+            return (int) (($s * 1103515245 + 12345) & 0x7FFFFFFF) % $mod;
         };
 
         $authority = self::FAKE_AUTHORITIES[$rng($seed, count(self::FAKE_AUTHORITIES))];
@@ -79,7 +79,7 @@ final class FakeDataSandbox
         return [
             // A fabricated public_id — UUID-shaped but flagged as sandbox so we
             // can recognise our own bait if it ever shows up somewhere.
-            'public_id' => sprintf('00000000-dead-7%03x-beef-%012x', $seed % 0xfff, $seed),
+            'public_id' => sprintf('00000000-dead-7%03x-beef-%012x', $seed % 0xFFF, $seed),
             'registry_number' => sprintf('%04d-SANDBOX-%05d', 2026, $seed % 100000),
             'authority' => $authority,
             'winner' => $company,

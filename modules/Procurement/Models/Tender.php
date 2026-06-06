@@ -12,9 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Procurement\Enums\TenderStatus;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
-#[TypeScript]
 final class Tender extends Model
 {
     use HasFactory;

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     // Laravel framework auth keys
     'failed' => 'Невалидни данни за вход.',

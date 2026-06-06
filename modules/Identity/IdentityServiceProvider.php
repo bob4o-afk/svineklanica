@@ -7,6 +7,7 @@ namespace Modules\Identity;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Modules\Identity\Console\Commands\CreateAdminCommand;
 use Modules\Identity\Events\HoneypotEvent;
 use Modules\Identity\Http\Controllers\HoneypotController;
 use Modules\Identity\Http\Middleware\HoneypotMiddleware;
@@ -28,6 +29,12 @@ class IdentityServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                CreateAdminCommand::class,
+            ]);
+        }
+
         Route::middleware('api')
             ->prefix('api')
             ->group(__DIR__.'/routes/api.php');

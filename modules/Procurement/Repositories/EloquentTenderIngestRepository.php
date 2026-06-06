@@ -79,7 +79,7 @@ final class EloquentTenderIngestRepository implements TenderIngestRepository
      * Drop null values so an upsert never overwrites an existing column with null
      * (a later, sparser scrape shouldn't erase data from a richer one).
      *
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      * @return array<string, mixed>
      */
     private function withoutNulls(array $attributes): array

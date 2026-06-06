@@ -20,10 +20,20 @@ use Illuminate\Support\Facades\Hash;
 class AdminUserSeeder extends Seeder
 {
     private const ADMIN_EMAIL = 'bobinkata@test.com';
+
     private const ADMIN_PASSWORD = 'BurgasPunk2026!';
 
     public function run(): void
     {
+        // DEV ONLY. This seeder carries a hardcoded password, so it must never
+        // run in production (security.md §7). In prod, mint the admin with the
+        // env/prompt-driven `php artisan app:create-admin` instead.
+        if (app()->environment('production')) {
+            $this->command?->warn('AdminUserSeeder skipped in production — use `php artisan app:create-admin`.');
+
+            return;
+        }
+
         $admin = User::updateOrCreate(
             ['email' => self::ADMIN_EMAIL],
             ['name' => 'Bobinkata', 'password' => Hash::make(self::ADMIN_PASSWORD)],

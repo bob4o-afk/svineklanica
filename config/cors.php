@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // CORS is locked down (security.md §4): only our own front-ends, never "*".
 // Origins come from env (comma-separated), so prod/demo domains are configured,
 // not hardcoded.

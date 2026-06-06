@@ -12,13 +12,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Modules\Detection\Enums\FlagSeverity;
 use Modules\Detection\Enums\FlagType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * A red-flag claim (CLAUDE.md §1.1). `source_urls` is mandatory — a detector
  * never asserts a flag without one (backend.md §11, data-sources.md §0).
  */
-#[TypeScript]
 final class Flag extends Model
 {
     use HasFactory;

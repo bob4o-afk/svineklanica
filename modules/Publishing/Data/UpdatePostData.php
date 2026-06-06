@@ -7,6 +7,7 @@ namespace Modules\Publishing\Data;
 use Illuminate\Validation\Rule;
 use Modules\Publishing\Enums\PostStatus;
 use Spatie\LaravelData\Data;
+use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /** Update-post input (full replace). Admin only — authorized at the boundary. */
@@ -19,6 +20,7 @@ final class UpdatePostData extends Data
         public ?string $excerpt,
         public string $body,
         public PostStatus $status,
+        #[LiteralTypeScriptType('string[] | null')]
         public ?array $sourceUrls,
     ) {}
 

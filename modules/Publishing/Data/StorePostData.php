@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Publishing\Data;
 
 use Spatie\LaravelData\Data;
+use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /** Create-post input. Authorization is enforced HERE (backend.md §4/§6) — admin only. */
@@ -16,6 +17,7 @@ final class StorePostData extends Data
         public string $title,
         public ?string $excerpt,
         public string $body,
+        #[LiteralTypeScriptType('string[] | null')]
         public ?array $sourceUrls,
     ) {}
 

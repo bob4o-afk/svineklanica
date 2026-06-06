@@ -1,9 +1,13 @@
 <?php
 
-use Spatie\LaravelTypeScriptTransformer\Collectors\DefaultCollector;
-use Spatie\TypeScriptTransformer\Transformers\SpatieStateTransformer;
-use Spatie\TypeScriptTransformer\Transformers\EnumTransformer;
+declare(strict_types=1);
+
+use Carbon\CarbonImmutable;
 use Spatie\LaravelData\Support\TypeScriptTransformer\DataTypeScriptTransformer;
+use Spatie\TypeScriptTransformer\Collectors\DefaultCollector;
+use Spatie\TypeScriptTransformer\Collectors\EnumCollector;
+use Spatie\TypeScriptTransformer\Transformers\EnumTransformer;
+use Spatie\TypeScriptTransformer\Writers\TypeDefinitionWriter;
 
 // Backend → frontend type sync (backend.md §9). `composer sync:api-types`
 // writes the generated types into the web client. Discovery covers both the
@@ -16,26 +20,26 @@ return [
 
     'collectors' => [
         DefaultCollector::class,
+        EnumCollector::class,
     ],
 
     'transformers' => [
+        // laravel-data DTOs (our Data classes) → TS interfaces.
         DataTypeScriptTransformer::class,
-        SpatieStateTransformer::class,
+        // int-backed enums (TenderStatus, FlagType, …) → TS.
         EnumTransformer::class,
     ],
 
     'default_type_replacements' => [
         DateTime::class => 'string',
         Carbon\Carbon::class => 'string',
-        Carbon\CarbonImmutable::class => 'string',
+        CarbonImmutable::class => 'string',
     ],
 
     // Single generated file consumed by apps/web.
     'output_file' => base_path('apps/web/src/types/generated.d.ts'),
 
-    'writers' => [
-        Spatie\TypeScriptTransformer\Writers\TypeDefinitionWriter::class,
-    ],
+    'writer' => TypeDefinitionWriter::class,
 
     'formatter' => null,
 

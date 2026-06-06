@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1
+# PRODUCTION image — FrankenPHP. Handles requests CONCURRENTLY and reloads
+# gracefully (unlike `artisan serve`), which is what makes the rolling,
+# zero-downtime deploy real. Serves Laravel's public/ on :8000 (plain HTTP;
+# the edge Caddy proxy terminates TLS). Built + pushed to GHCR by release.yml.
+
+FROM dunglas/frankenphp:1-php8.3-alpine AS prod
+ENV APP_ENV=production
+
+# PHP extensions Laravel needs (the FrankenPHP image ships install-php-extensions).
+RUN install-php-extensions pdo_pgsql intl zip bcmath pcntl redis opcache
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+WORKDIR /app
+COPY . .
+
+# --no-scripts: do NOT boot the app at build time. There is no env during the
+# build (.env is git/docker-ignored), so package:discover would fail resolving
+# runtime services (e.g. "cache.store"). Discovery + config/route/event caching
+# run at RUNTIME in entrypoint.sh, once the real env (.env.prod) is injected.
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress --no-scripts
+
+COPY docker/frankenphp/Caddyfile /etc/frankenphp/Caddyfile
+COPY docker/frankenphp/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+EXPOSE 8000
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]

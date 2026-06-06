@@ -10,9 +10,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
-#[TypeScript]
 final class ContractingAuthority extends Model
 {
     use HasFactory;

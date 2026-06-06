@@ -97,4 +97,34 @@ make lint
 --------------------------------------------------------------------------------
 docker compose run --rm app php artisan queue:work --tries=3
 docker compose run --rm app php artisan queue:failed
+
+--------------------------------------------------------------------------------
+ MAIL  (local = Mailpit at http://localhost:8025; prod = Resend via .env.prod)
+--------------------------------------------------------------------------------
+# Queue a test notification (processed by the queue worker -> mailer)
+docker compose exec app php artisan mail:test you@example.com
+
+--------------------------------------------------------------------------------
+ PROD IMAGE  (FrankenPHP — Dockerfile.prod; built by CI, but you can test locally)
+--------------------------------------------------------------------------------
+# Build the prod API image locally
+docker build -f Dockerfile.prod --target prod -t liberhack-api:prodtest .
+
+# Smoke-test it on the dev network (serves Laravel public/ on :8000; needs db+redis up)
+docker run -d --name frankentest --network liberhack_default --env-file .env liberhack-api:prodtest
+docker exec frankentest wget -qO- http://127.0.0.1:8000/_health    # expect "Application up"
+docker rm -f frankentest
+
+--------------------------------------------------------------------------------
+ DEPLOY  (tag -> CI builds+pushes to GHCR -> SSH rolling, zero-downtime; DEPLOY.md)
+--------------------------------------------------------------------------------
+# Cut a release: CI (release.yml) tests -> builds images -> deploys -> emails.
+git tag v1.0.0 && git push origin v1.0.0
+
+# On the VM (manual rolling swap of one service, if ever needed by hand):
+#   export COMPOSE_FILE=docker-compose.prod.yml COMPOSE_ENV_FILES=.env.prod
+#   docker compose pull && docker rollout app && docker rollout web
+
+# Prove zero-downtime during a deploy (run from anywhere):
+#   while true; do curl -s -o /dev/null -w "%{http_code}\n" https://bobinkata.com/_health; sleep 0.3; done
 ================================================================================

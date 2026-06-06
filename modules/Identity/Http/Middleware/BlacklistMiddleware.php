@@ -122,7 +122,7 @@ final class BlacklistMiddleware
      * window; cross the threshold → ban every signal. Catches a rapid scanner
      * even when no single request carries a signature.
      *
-     * @param array<string, string> $signals
+     * @param  array<string, string>  $signals
      */
     private function trackForTarpit(Request $request, array $signals): void
     {

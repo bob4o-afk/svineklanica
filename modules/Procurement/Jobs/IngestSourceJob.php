@@ -24,6 +24,7 @@ final class IngestSourceJob implements ShouldQueue
     use SerializesModels;
 
     public int $tries = 3;
+
     public int $backoff = 10;
 
     public function __construct(

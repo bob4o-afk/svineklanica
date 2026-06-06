@@ -23,6 +23,7 @@
 /apps/web/dev-dist/
 /apps/web/.vite/
 /apps/web/coverage/
+/apps/web/.pnpm-store/
 node_modules/
 
 # Docker / Caddy

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Logging;
 
 use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 /**
  * Operational logging goes through here — no bare `Log::` calls scattered across
@@ -32,7 +33,7 @@ class LoggingService
         $this->log()->error($message, $context);
     }
 
-    private function log(): \Psr\Log\LoggerInterface
+    private function log(): LoggerInterface
     {
         return Log::channel($this->channel);
     }

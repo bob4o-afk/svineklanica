@@ -69,7 +69,7 @@ final class BlacklistService
      * Is ANY of these signals banned? One match = banned (the VPN-hop defence:
      * a new ip still trips the device/fingerprint signal).
      *
-     * @param array<string, string> $signals type => value (e.g. ['ip' => ..., 'device' => ...])
+     * @param  array<string, string>  $signals  type => value (e.g. ['ip' => ..., 'device' => ...])
      */
     public function anyBlocked(array $signals): bool
     {
@@ -86,7 +86,7 @@ final class BlacklistService
      * Ban every supplied signal at once, so switching just one (the ip) doesn't
      * let the caller back in.
      *
-     * @param array<string, string> $signals type => value
+     * @param  array<string, string>  $signals  type => value
      */
     public function blockSignals(array $signals, string $reason, ?int $ttl = null): void
     {
@@ -137,7 +137,7 @@ final class BlacklistService
     /**
      * Short, non-reversible digests for the security log.
      *
-     * @param array<string, string> $signals
+     * @param  array<string, string>  $signals
      * @return array<string, string>
      */
     private function loggableSignals(array $signals): array

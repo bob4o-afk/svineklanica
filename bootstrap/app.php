@@ -1,12 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Support\Facades\RateLimiter;
 use Modules\Identity\Http\Middleware\BlacklistMiddleware;
 use Modules\Identity\Security\Fingerprint\RequestFingerprint;
+use Modules\Notifications\Actions\SendNotificationAction;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -48,5 +53,32 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Error alerting via e-mail (Resend) instead of Sentry. Real server-side
+        // failures are mailed to the admin as a QUEUED notification (backend.md §3),
+        // rate-limited so a spike can't flood the inbox. Client errors (4xx) and
+        // validation are skipped — they're not incidents. Logging is untouched.
+        $exceptions->report(function (\Throwable $e): void {
+            if ($e instanceof HttpExceptionInterface && $e->getStatusCode() < 500) {
+                return;
+            }
+
+            $to = (string) config('notifications.alert_email');
+            if ($to === '') {
+                return;
+            }
+
+            $perMinute = (int) config('notifications.alert_max_per_minute', 5);
+
+            RateLimiter::attempt('error-alert-mail', $perMinute, function () use ($to, $e): void {
+                app(SendNotificationAction::class)->execute(
+                    $to,
+                    'LiberHack alert: '.class_basename($e),
+                    [
+                        $e->getMessage(),
+                        $e->getFile().':'.$e->getLine(),
+                        'env: '.app()->environment(),
+                    ],
+                );
+            });
+        });
     })->create();

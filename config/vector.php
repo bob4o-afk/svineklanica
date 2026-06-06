@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // pgvector configuration (backend.md §12). Embeddings are produced by the Python
 // scraper (scraping.md §8) and stored here; the dimension MUST match the model the
 // scraper uses. Default 384 = a CPU-friendly multilingual model (e.g. MiniLM-L12-v2).

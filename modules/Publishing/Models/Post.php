@@ -14,14 +14,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Publishing\Enums\PostStatus;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * A corruption post in the public feed (backend.md §14). `view_count` is the
  * durable mirror of the Redis per-IP counter — never incremented per request
  * here.
  */
-#[TypeScript]
 final class Post extends Model
 {
     use HasFactory;

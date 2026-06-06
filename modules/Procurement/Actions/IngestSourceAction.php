@@ -82,17 +82,20 @@ final class IngestSourceAction
                     $record = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
                 } catch (JsonException $e) {
                     $skip('invalid JSON — '.$e->getMessage());
+
                     continue;
                 }
 
                 $missing = $this->missingKeys($record);
                 if ($missing !== []) {
                     $skip('missing keys: '.implode(', ', $missing));
+
                     continue;
                 }
 
                 if ($record['source'] !== $source) {
                     $skip("source mismatch (record is '{$record['source']}')");
+
                     continue;
                 }
 

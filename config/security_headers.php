@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // Response security headers (security.md §8), applied by App\Http\Middleware\
 // SecurityHeaders. Read from config (cache-safe) — never env() in the middleware,
 // since config:cache makes env() return null at runtime.
