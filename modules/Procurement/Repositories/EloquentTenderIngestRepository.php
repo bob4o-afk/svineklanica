@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\Procurement\Repositories;
 
+use Carbon\CarbonInterface;
 use Modules\Procurement\Contracts\TenderIngestRepository;
 use Modules\Procurement\Models\Company;
 use Modules\Procurement\Models\ContractingAuthority;
+use Modules\Procurement\Models\PriceSnapshot;
 use Modules\Procurement\Models\Tender;
+use Modules\Procurement\Support\ProductKey;
 
 final class EloquentTenderIngestRepository implements TenderIngestRepository
 {
@@ -57,13 +60,17 @@ final class EloquentTenderIngestRepository implements TenderIngestRepository
         );
     }
 
-    public function syncItems(Tender $tender, array $items): void
+    public function syncItems(Tender $tender, array $items, CarbonInterface $capturedAt): void
     {
-        // Idempotent: a re-ingest replaces the tender's items wholesale.
+        // Idempotent: a re-ingest replaces the tender's items + their snapshots wholesale.
+        $oldItemIds = $tender->items()->pluck('id');
+        if ($oldItemIds->isNotEmpty()) {
+            PriceSnapshot::query()->whereIn('tender_item_id', $oldItemIds)->delete();
+        }
         $tender->items()->delete();
 
         foreach ($items as $item) {
-            $tender->items()->create($this->withoutNulls([
+            $created = $tender->items()->create($this->withoutNulls([
                 'description' => $item['description'] ?? null,
                 'quantity' => $item['quantity'] ?? null,
                 'unit' => $item['unit'] ?? null,
@@ -72,6 +79,20 @@ final class EloquentTenderIngestRepository implements TenderIngestRepository
                 'vat_included' => $item['vat_included'] ?? null,
                 'source_url' => $item['source_url'] ?? null,
             ]));
+
+            // A priced, named item becomes a point-in-time price snapshot.
+            $unitPrice = $item['unit_price'] ?? null;
+            $productKey = ProductKey::normalize($item['description'] ?? null);
+            if ($unitPrice !== null && $productKey !== null) {
+                $created->priceSnapshots()->create([
+                    'product_key' => $productKey,
+                    'description' => (string) ($item['description'] ?? ''),
+                    'price' => $unitPrice,
+                    'currency' => $item['currency'] ?? $tender->currency ?? 'BGN',
+                    'captured_at' => $capturedAt,
+                    'source_url' => $item['source_url'] ?? $tender->source_url,
+                ]);
+            }
         }
     }
 

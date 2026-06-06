@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\Procurement;
 
+use App\Shared\Contracts\ProcurementReadPort;
 use Illuminate\Support\ServiceProvider;
 use Modules\Procurement\Console\Commands\IngestRunCommand;
 use Modules\Procurement\Contracts\IngestRecordRepository;
 use Modules\Procurement\Contracts\TenderIngestRepository;
 use Modules\Procurement\Repositories\EloquentIngestRecordRepository;
+use Modules\Procurement\Repositories\EloquentProcurementReadRepository;
 use Modules\Procurement\Repositories\EloquentTenderIngestRepository;
 
 /**
@@ -22,6 +24,7 @@ class ProcurementServiceProvider extends ServiceProvider
     {
         $this->app->bind(IngestRecordRepository::class, EloquentIngestRecordRepository::class);
         $this->app->bind(TenderIngestRepository::class, EloquentTenderIngestRepository::class);
+        $this->app->bind(ProcurementReadPort::class, EloquentProcurementReadRepository::class);
     }
 
     public function boot(): void

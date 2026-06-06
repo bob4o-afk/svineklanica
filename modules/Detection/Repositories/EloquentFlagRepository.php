@@ -8,6 +8,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Modules\Detection\Contracts\FlagRepository;
 use Modules\Detection\Data\FlagFilterData;
+use Modules\Detection\Enums\FlagType;
 use Modules\Detection\Models\Flag;
 
 final class EloquentFlagRepository implements FlagRepository
@@ -34,5 +35,23 @@ final class EloquentFlagRepository implements FlagRepository
         }
 
         return Flag::query()->where('public_id', $publicId)->first();
+    }
+
+    public function deleteByType(FlagType $type): void
+    {
+        Flag::query()->where('type', $type)->delete();
+    }
+
+    public function createMany(array $rows): int
+    {
+        $written = 0;
+        foreach ($rows as $row) {
+            // Eloquent create (not a bulk insert) so HasPublicId assigns a UUIDv7
+            // and the enum/array casts apply (backend.md §7).
+            Flag::create($row);
+            $written++;
+        }
+
+        return $written;
     }
 }

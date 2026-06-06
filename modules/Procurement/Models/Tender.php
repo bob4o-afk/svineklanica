@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Procurement\Models;
 
+use App\Shared\Enums\CorruptionCategory;
+use App\Shared\Enums\Sphere;
 use App\Support\PublicId\HasPublicId;
 use Database\Factories\TenderFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -28,6 +30,8 @@ final class Tender extends Model
         'title',
         'description',
         'cpv_code',
+        'sphere',
+        'category',
         'value',
         'currency',
         'vat_included',
@@ -42,6 +46,8 @@ final class Tender extends Model
     {
         return [
             'fetched_at' => 'datetime',
+            'sphere' => Sphere::class,
+            'category' => CorruptionCategory::class,
             'value' => 'decimal:2',
             'vat_included' => 'boolean',
             'status' => TenderStatus::class,

@@ -6,7 +6,9 @@ namespace Modules\Detection;
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Modules\Detection\Console\Commands\DetectRunCommand;
 use Modules\Detection\Contracts\FlagRepository;
+use Modules\Detection\Detectors\DetectorRegistry;
 use Modules\Detection\Repositories\EloquentFlagRepository;
 
 /**
@@ -19,6 +21,7 @@ class DetectionServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(FlagRepository::class, EloquentFlagRepository::class);
+        $this->app->singleton(DetectorRegistry::class);
     }
 
     public function boot(): void
@@ -26,5 +29,11 @@ class DetectionServiceProvider extends ServiceProvider
         Route::middleware('api')
             ->prefix('api')
             ->group(__DIR__.'/routes/api.php');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                DetectRunCommand::class,
+            ]);
+        }
     }
 }

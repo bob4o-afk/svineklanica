@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Shared\Enums\CorruptionCategory;
 use App\Support\PublicId\PublicIdGenerator;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Modules\Procurement\Enums\TenderStatus;
@@ -30,6 +31,9 @@ class TenderFactory extends Factory
             'title' => 'Доставка на '.fake()->word(),
             'description' => fake()->sentence(12),
             'cpv_code' => fake()->numerify('########'),
+            // A tender IS a public procurement; sphere stays null unless a test sets it.
+            'sphere' => null,
+            'category' => CorruptionCategory::PublicProcurement,
             'value' => fake()->randomFloat(2, 1000, 5000000),
             'currency' => 'BGN',
             'vat_included' => true,

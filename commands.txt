@@ -76,6 +76,13 @@ docker compose run --rm app php artisan ingest:run --source=ted --path=storage/i
 docker compose run --rm app php artisan ingest:run --source=ted --queue  # dispatch the async job instead
 
 --------------------------------------------------------------------------------
+ DETECT   (run the red-flag detectors over ingested data; idempotent recompute)
+--------------------------------------------------------------------------------
+docker compose run --rm app php artisan detect:run                       # all detectors inline + summary table
+docker compose run --rm app php artisan detect:run --detector=price-discrepancy   # one only (price-discrepancy|serial-winner|cancelled)
+docker compose run --rm app php artisan detect:run --queue               # dispatch one async RunDetectorJob per detector
+
+--------------------------------------------------------------------------------
  INSPECT
 --------------------------------------------------------------------------------
 docker compose run --rm app php artisan route:list --path=api

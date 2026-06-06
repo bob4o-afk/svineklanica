@@ -2,12 +2,15 @@
 
 declare(strict_types=1);
 
+use App\Shared\Enums\CorruptionCategory;
+use App\Shared\Enums\Sphere;
 use Illuminate\Support\Facades\Queue;
 use Modules\Procurement\Actions\IngestSourceAction;
 use Modules\Procurement\Enums\TenderStatus;
 use Modules\Procurement\Jobs\IngestSourceJob;
 use Modules\Procurement\Models\Company;
 use Modules\Procurement\Models\ContractingAuthority;
+use Modules\Procurement\Models\PriceSnapshot;
 use Modules\Procurement\Models\Tender;
 use Modules\Procurement\Models\TenderItem;
 
@@ -73,6 +76,60 @@ it('ingests an NDJSON file into the domain tables', function () {
         ->and($tender->authority->name)->toBe('Община Бургас')
         ->and($tender->winner->name)->toBe('Техно Трейд ЕООД')
         ->and($tender->public_id)->not->toBeEmpty();
+
+    unlink($path);
+});
+
+it('tags category + writes a price snapshot per priced item', function () {
+    $path = writeFixture('test');
+
+    app(IngestSourceAction::class)->execute('test', $path);
+
+    $tender = Tender::where('natural_key', '2026/S-000001')->firstOrFail();
+    // "Община Бургас" matches no sphere keyword → left unset (no guessing).
+    expect($tender->sphere)->toBeNull()
+        ->and($tender->category)->toBe(CorruptionCategory::PublicProcurement);
+
+    // The one priced item ("Лаптоп" @ 5000) becomes a snapshot; the item-less tender adds none.
+    expect(PriceSnapshot::count())->toBe(1);
+    $snapshot = PriceSnapshot::firstOrFail();
+    expect($snapshot->product_key)->toBe('лаптоп')
+        ->and((float) $snapshot->price)->toBe(5000.00);
+
+    unlink($path);
+});
+
+it('infers the sphere from the contracting authority name', function () {
+    $line = json_encode([
+        'source' => 'test',
+        'natural_key' => '2026/S-HEALTH',
+        'source_url' => 'https://ted.europa.eu/notice/h',
+        'fetched_at' => '2026-06-05T10:00:00Z',
+        'payload' => [
+            'title' => 'Доставка на медицинско оборудване',
+            'authority' => ['name' => 'МБАЛ „Света Анна" Бургас'],
+        ],
+    ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+    $path = tempnam(sys_get_temp_dir(), 'ndjson_').'.ndjson';
+    file_put_contents($path, $line."\n");
+
+    app(IngestSourceAction::class)->execute('test', $path);
+
+    $tender = Tender::where('natural_key', '2026/S-HEALTH')->firstOrFail();
+    expect($tender->sphere)->toBe(Sphere::Healthcare);
+
+    unlink($path);
+});
+
+it('re-ingest does not duplicate price snapshots', function () {
+    $path = writeFixture('test');
+
+    app(IngestSourceAction::class)->execute('test', $path);
+    app(IngestSourceAction::class)->execute('test', $path);
+
+    expect(PriceSnapshot::count())->toBe(1)
+        ->and(TenderItem::count())->toBe(1);
 
     unlink($path);
 });

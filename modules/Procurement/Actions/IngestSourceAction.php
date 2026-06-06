@@ -12,6 +12,7 @@ use Modules\Procurement\Contracts\IngestRecordRepository;
 use Modules\Procurement\Contracts\TenderIngestRepository;
 use Modules\Procurement\Data\IngestSummary;
 use Modules\Procurement\Enums\TenderStatus;
+use Modules\Procurement\Services\SphereClassifier;
 
 /**
  * Reads the scraper's NDJSON contract and idempotently upserts it into the DB
@@ -40,6 +41,7 @@ final class IngestSourceAction
     public function __construct(
         private readonly IngestRecordRepository $records,
         private readonly TenderIngestRepository $tenders,
+        private readonly SphereClassifier $classifier,
         private readonly LoggingService $log,
     ) {}
 
@@ -156,6 +158,14 @@ final class IngestSourceAction
                 ? $this->tenders->upsertCompany($payload['winner'])
                 : null;
 
+            // Tag the record with its Sphere → Category (CLAUDE.md §1.0) so flags/feed
+            // are filterable; sphere stays null when it can't be inferred (no guessing).
+            $classification = $this->classifier->classify(
+                $authority?->name,
+                isset($payload['cpv_code']) ? (string) $payload['cpv_code'] : null,
+                $source,
+            );
+
             $tender = $this->tenders->upsertTender($source, (string) $record['natural_key'], [
                 'source_url' => (string) $record['source_url'],
                 'fetched_at' => $fetchedAt,
@@ -164,6 +174,8 @@ final class IngestSourceAction
                 'title' => (string) ($payload['title'] ?? '(без заглавие)'),
                 'description' => $payload['description'] ?? null,
                 'cpv_code' => $payload['cpv_code'] ?? null,
+                'sphere' => $classification->sphere,
+                'category' => $classification->category,
                 'value' => $payload['value'] ?? null,
                 'currency' => $payload['currency'] ?? null,
                 'vat_included' => $payload['vat_included'] ?? null,
@@ -175,7 +187,7 @@ final class IngestSourceAction
             ]);
 
             $items = isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : [];
-            $this->tenders->syncItems($tender, $items);
+            $this->tenders->syncItems($tender, $items, $fetchedAt);
 
             $this->records->markIngested($ingest);
         });
