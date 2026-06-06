@@ -115,9 +115,34 @@ jobs:
             # traffic hits the workers, and the proxy reload is graceful).
             docker compose up -d --no-deps queue scheduler proxy
 
-  notify:
-    name: Email release notifier
-    needs: build
+  # --- Email notifications: one when the release STARTS, one on SUCCESS,
+  #     one on FAILURE (saying which stage failed). All via the same SMTP secrets.
+  notify-start:
+    name: Email — release started
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send "started" email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_HOST }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          from: ${{ secrets.MAIL_FROM_ADDRESS }}
+          to: ${{ secrets.RELEASE_NOTIFY_TO }}
+          subject: "LiberHack Watchdog — release ${{ github.ref_name }} STARTED ⏳"
+          body: |
+            A release of LiberHack Watchdog has started.
+
+            Version: ${{ github.ref_name }}
+            Commit:  ${{ github.sha }}
+            Follow it: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  notify-success:
+    name: Email — release succeeded
+    needs: [test, build, deploy]
+    # Runs only if everything that ran passed (deploy may be skipped when DEPLOY_ENABLED!=true).
+    if: ${{ always() && needs.test.result == 'success' && needs.build.result == 'success' && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -136,7 +161,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Send release email
+      - name: Send "success" email
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.MAIL_HOST }}
@@ -145,15 +170,49 @@ jobs:
           password: ${{ secrets.MAIL_PASSWORD }}
           from: ${{ secrets.MAIL_FROM_ADDRESS }}
           to: ${{ secrets.RELEASE_NOTIFY_TO }}
-          subject: "LiberHack Watchdog — released ${{ github.ref_name }}"
+          subject: "LiberHack Watchdog — released ${{ github.ref_name }} ✅"
           body: |
-            A new version of LiberHack Watchdog has shipped.
+            A new version of LiberHack Watchdog has shipped successfully.
 
             Version: ${{ github.ref_name }}
-            Images:  ghcr.io/${{ github.repository_owner }}/liberhack-api:${{ github.ref_name }}
-                     ghcr.io/${{ github.repository_owner }}/liberhack-web:${{ github.ref_name }}
             Commit:  ${{ github.sha }}
-            Build:   passed ✅
+            Deploy:  ${{ needs.deploy.result }}
+            Run:     ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
             Changes since the previous tag:
             ${{ steps.log.outputs.changelog }}
+
+  notify-failure:
+    name: Email — release failed
+    needs: [test, build, deploy]
+    # Runs if ANY stage failed; reports which one.
+    if: ${{ always() && (needs.test.result == 'failure' || needs.build.result == 'failure' || needs.deploy.result == 'failure') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine which stage failed
+        id: which
+        run: |
+          F=""
+          [ "${{ needs.test.result }}" = "failure" ] && F="$F tests"
+          [ "${{ needs.build.result }}" = "failure" ] && F="$F build"
+          [ "${{ needs.deploy.result }}" = "failure" ] && F="$F deploy"
+          echo "stage=${F# }" >> "$GITHUB_OUTPUT"
+
+      - name: Send "failure" email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_HOST }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          from: ${{ secrets.MAIL_FROM_ADDRESS }}
+          to: ${{ secrets.RELEASE_NOTIFY_TO }}
+          subject: "LiberHack Watchdog — release ${{ github.ref_name }} FAILED ❌"
+          body: |
+            A release of LiberHack Watchdog FAILED.
+
+            Version:       ${{ github.ref_name }}
+            Failed stage:  ${{ steps.which.outputs.stage }}
+            Results:       tests=${{ needs.test.result }} build=${{ needs.build.result }} deploy=${{ needs.deploy.result }}
+            Commit:        ${{ github.sha }}
+            Logs:          ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
