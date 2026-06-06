@@ -1,5 +1,5 @@
 import { Box } from '@mui/material';
-import { Outlet } from 'react-router-dom';
+import { Outlet, ScrollRestoration } from 'react-router-dom';
 import { AppErrorBoundary } from '@/components/feedback/AppErrorBoundary';
 import { AppContainer } from './AppContainer';
 import { AppFooter } from './AppFooter';
@@ -11,6 +11,8 @@ import { AppWatermark } from './AppWatermark';
 export function AppLayout() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100%', position: 'relative' }}>
+      {/* Scroll to top on every new navigation; restore position on back/forward. */}
+      <ScrollRestoration />
       <AppWatermark />
       {/* Center-column mask: solid bg panel matching the content container width so the
           watermark is naturally visible in the left/right margins. box-shadow softens the

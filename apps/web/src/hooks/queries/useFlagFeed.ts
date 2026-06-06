@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { infiniteQueryOptions, useInfiniteQuery } from '@tanstack/react-query';
 import { http } from '@/lib/http';
 import { queryKeys } from '@/lib/queryKeys';
 import type { FlagFeedQuery, FlagPost, Paginated } from '@/types/api';
@@ -21,8 +21,11 @@ async function fetchFeed(query: FlagFeedQuery, page: number): Promise<Paginated<
   return response.data;
 }
 
-export function useFlagFeed(query: FlagFeedQuery = {}) {
-  return useInfiniteQuery({
+/** Shared query options so the feed can be both rendered (useFlagFeed) and prefetched
+ *  (queryClient.prefetchInfiniteQuery) under the exact same cache key — lets the map warm a
+ *  region's feed during the click animation so it lands instantly. */
+export function feedQueryOptions(query: FlagFeedQuery = {}) {
+  return infiniteQueryOptions({
     queryKey: queryKeys.flagFeed(query),
     queryFn: ({ pageParam }) => fetchFeed(query, pageParam),
     initialPageParam: 1,
@@ -31,4 +34,8 @@ export function useFlagFeed(query: FlagFeedQuery = {}) {
       return loaded < lastPage.total ? lastPage.page + 1 : undefined;
     },
   });
+}
+
+export function useFlagFeed(query: FlagFeedQuery = {}) {
+  return useInfiniteQuery(feedQueryOptions(query));
 }

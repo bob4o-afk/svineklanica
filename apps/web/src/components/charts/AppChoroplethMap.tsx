@@ -10,19 +10,28 @@ import type { RegionAggregate } from '@/types/api';
 
 const WIDTH = 800;
 const HEIGHT = 520;
-const EXIT_MS = 380;
+const EXIT_MS = 400;
 
 export interface AppChoroplethMapProps {
   geo: FeatureCollection<Geometry, { NUTS_ID: string }>;
   aggregates: RegionAggregate[];
   onSelectRegion?: (code: string) => void;
+  /** Fired the instant a region is clicked (before the animation) so the caller can warm that
+   *  region's feed into cache while the transition plays. */
+  onRegionPrefetch?: (code: string) => void;
 }
 
 /** Bulgaria-oblasti choropleth: each province shaded by its flag count (darker red = more).
  *  Rendered to a viewBox SVG via d3-geo (no container measurement, so it's resize-safe and
- *  test-friendly). Hover shows the region + count; clicking expands the region then drills into
- *  its feed. Themed for light + dark, with high-contrast borders. */
-export function AppChoroplethMap({ geo, aggregates, onSelectRegion }: AppChoroplethMapProps) {
+ *  test-friendly). Hover shows the region + count. Clicking a region gently grows it in place
+ *  (keeping its own shade) while the rest dim, then the map softly fades into the region's feed.
+ *  Themed for light + dark, with high-contrast borders. */
+export function AppChoroplethMap({
+  geo,
+  aggregates,
+  onSelectRegion,
+  onRegionPrefetch,
+}: AppChoroplethMapProps) {
   const theme = useTheme();
   const { t } = useTranslation();
   const [hovered, setHovered] = useState<string | null>(null);
@@ -50,18 +59,10 @@ export function AppChoroplethMap({ geo, aggregates, onSelectRegion }: AppChoropl
 
   function handleClick(code: string): void {
     if (onSelectRegion === undefined || exiting !== null) return;
+    onRegionPrefetch?.(code); // warm the region's feed while the animation plays
     setExiting(code);
     window.setTimeout(() => onSelectRegion(code), EXIT_MS);
   }
-
-  // Paint the exiting region last so it grows on top of the rest.
-  const features =
-    exiting === null
-      ? geo.features
-      : [...geo.features].sort(
-          (a, b) =>
-            Number(a.properties.NUTS_ID === exiting) - Number(b.properties.NUTS_ID === exiting),
-        );
 
   const hoveredAgg = hovered !== null ? byCode.get(hovered) : undefined;
 
@@ -84,11 +85,19 @@ export function AppChoroplethMap({ geo, aggregates, onSelectRegion }: AppChoropl
       <Box
         component="svg"
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        sx={{ width: '100%', height: 'auto', display: 'block' }}
+        sx={{
+          width: '100%',
+          height: 'auto',
+          display: 'block',
+          overflow: 'visible',
+          // Grow the region, then fade the map out — navigation fires right as the fade lands.
+          opacity: exiting !== null ? 0 : 1,
+          transition: 'opacity 260ms ease 120ms',
+        }}
         role="img"
         aria-label={t('viz:map.heading')}
       >
-        {features.map((f) => {
+        {geo.features.map((f) => {
           const code = f.properties.NUTS_ID;
           const d = pathGen(f);
           if (d === null) return null;
@@ -101,14 +110,14 @@ export function AppChoroplethMap({ geo, aggregates, onSelectRegion }: AppChoropl
               d={d}
               fill={fillFor(code)}
               stroke={isHovered || isExiting ? palette.alarm : borderColor}
-              strokeWidth={isHovered ? 1.6 : isExiting ? 2.4 : 0.75}
+              strokeWidth={isExiting ? 2 : isHovered ? 1.6 : 0.75}
               style={{
                 cursor: onSelectRegion !== undefined ? 'pointer' : 'default',
                 transformBox: 'fill-box',
                 transformOrigin: 'center',
                 transform: isExiting ? 'scale(1.5)' : 'scale(1)',
-                opacity: dimmed ? 0.1 : 1,
-                transition: `transform ${EXIT_MS}ms ease, opacity ${EXIT_MS}ms ease, fill 120ms`,
+                opacity: dimmed ? 0.25 : 1,
+                transition: 'transform 520ms cubic-bezier(0.33, 1, 0.68, 1), opacity 240ms ease, fill 120ms',
                 pointerEvents: exiting !== null ? 'none' : 'auto',
               }}
               onMouseEnter={() => setHovered(code)}

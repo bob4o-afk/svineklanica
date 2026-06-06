@@ -47,6 +47,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       // External registration script (no inline <script>) so the strict prod script-src 'self' holds.
       injectRegister: 'script',
+      // Never run the PWA service worker in dev — it would fight MSW's mock worker for control
+      // of the page and make /api/* requests fall through (404). PWA is a production concern.
+      devOptions: { enabled: false },
       includeAssets: ['favicon.svg', 'robots.txt'],
       manifest: {
         name: BRAND.name,
