@@ -215,7 +215,7 @@ def _hard_trip(view: TenderView, by_key: dict[str, Signal]) -> tuple[bool, float
         return True, 100.0, "Идентични цени и едновременно подаване на офертите — недвусмислена тръжна манипулация."
     if has("loser_as_subcontractor") and has("identical_bid_prices", 0.7):
         return True, 100.0, "Губещ с идентична цена е нает като подизпълнител — картелна схема."
-    if has("single_bidder", 0.7) and has("tailored_spec_llm", 0.7):
+    if has("single_bidder", 0.4) and has("tailored_spec_llm", 0.7):
         return True, 99.0, "Една оферта при условия, скроени по мярка — конкуренцията е елиминирана."
     if has("late_bid_won"):
         return True, 99.0, "Печелившата оферта е подадена след крайния срок."
@@ -227,15 +227,15 @@ def _hard_trip(view: TenderView, by_key: dict[str, Signal]) -> tuple[bool, float
         return True, 100.0, "Цена на лекарство значително над NCPR предел с потвърждение от LLM."
     if has("drug_above_ceiling", 0.85):
         return True, 99.0, "Наблюдавана цена над пределната NCPR стойност."
-    if has("rigged_competition_llm", 0.8) and has("short_application_window", 0.6):
+    if has("rigged_competition_llm", 0.8) and has("short_application_window", 0.45):
         return True, 99.0, "Нагласен конкурс: кратък срок + условия по мярка."
     if has("conflict_kinship_llm", 0.85):
         return True, 99.0, "Документирана роднинска връзка при назначение/конкурс."
-    if has("undervalued_sale_llm", 0.85) and has("asset_single_bidder", 0.5):
+    if has("undervalued_sale_llm", 0.85) and has("asset_single_bidder", 0.4):
         return True, 99.0, "Занижена продажба на актив с един участник."
-    if has("unexplained_wealth_llm", 0.85) and has("late_declaration", 0.5):
+    if has("unexplained_wealth_llm", 0.85) and has("late_declaration", 0.3):
         return True, 99.0, "Необяснимо имущество с късно подадена декларация."
-    if has("magistrate_competition_llm", 0.85) and has("short_application_window", 0.6):
+    if has("magistrate_competition_llm", 0.85) and has("short_application_window", 0.45):
         return True, 99.0, "Нагласен конкурс за магистрат: кратък срок + условия по мярка."
     if has("magistrate_competition_llm", 0.85) and has("conflict_kinship_llm", 0.7):
         return True, 99.0, "Нагласен конкурс за магистрат с документиран конфликт/роднина."

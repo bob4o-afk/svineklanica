@@ -17,6 +17,11 @@
 - `suspicious_conditions` — цитати от текста с `restrictiveness`.
 - **rationale_bg** — на български, конкретно.
 
+# Калибровка (бъди сдържан)
+
+- Понякога медицинска необходимост оправдава конкретен продукт (напр. биологична терапия) — това не е автоматично насочване.
+- Висока увереност (> 0.7) само при **марка без „или еквивалент"** или изрична забрана на генерици. При посочено МНН с допуснат еквивалент дръж `steering_confidence` ниско.
+
 # Structured output (JSON)
 
 Попълни JSON схемата: `steering_confidence`, `brand_named`, `no_equivalent_clause`, `suspicious_conditions[]`, `rationale_bg`.

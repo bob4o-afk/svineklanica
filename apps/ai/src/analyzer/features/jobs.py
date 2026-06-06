@@ -19,7 +19,7 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
 
     window = _application_window_days(view)
     if window is not None and 0 <= window < 14:
-        risk = clamp01(0.4 + (14 - window) / 14 * 0.5)
+        risk = clamp01(0.3 + (14 - window) / 14 * 0.4)
         out.append(
             signal(
                 "short_application_window",
@@ -40,11 +40,14 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
             signal(
                 "holiday_window",
                 FAMILY,
-                0.45,
+                0.3,
                 code="JOB02",
                 value=view.published_at.month,
                 source_field="published_at",
-                rationale_bg="Обявен по време на празничен/отпускарски период — по-малко кандидати.",
+                rationale_bg=(
+                    "Обявен през празничен/отпускарски месец — често е обикновен график, "
+                    "слаб сигнал освен в комбинация с кратък срок."
+                ),
             )
         )
 

@@ -11,9 +11,9 @@ from .base import signal
 
 FAMILY = "wealth"
 
-# Annual declaration deadline heuristic (Jan 31 following year)
-_DECLARATION_DEADLINE_MONTH = 1
-_DECLARATION_DEADLINE_DAY = 31
+# Annual declaration deadline: 15 May of the following year (чл. 175в, ал. 1, т. 2 ЗСВ).
+_DECLARATION_DEADLINE_MONTH = 5
+_DECLARATION_DEADLINE_DAY = 15
 
 
 def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
@@ -26,10 +26,10 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
             signal(
                 "missing_declaration",
                 FAMILY,
-                0.5,
+                0.3,
                 code="DEC01",
                 source_field="magistrate",
-                rationale_bg="Липсва име на магистрат в декларацията.",
+                rationale_bg="Липсва име на магистрат в записа (вероятно непълно извличане, не задължително нарушение).",
             )
         )
         return out
@@ -46,10 +46,10 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
             signal(
                 "missing_declaration_date",
                 FAMILY,
-                0.55,
+                0.3,
                 code="DEC02",
                 source_field="declared_at",
-                rationale_bg="Липсва дата на имуществена декларация.",
+                rationale_bg="Липсва дата на имуществена декларация (възможен пропуск при описа).",
             )
         )
     elif _is_late_declaration(declared_at):
@@ -57,11 +57,14 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
             signal(
                 "late_declaration",
                 FAMILY,
-                0.65,
+                0.3,
                 code="DEC03",
                 value=declared_at.isoformat(),
                 source_field="declared_at",
-                rationale_bg="Декларацията е подадена след типичния краен срок (31 януари).",
+                rationale_bg=(
+                    "Декларацията е подадена след крайния срок (15 май). "
+                    "Закъснението е често и обикновено маловажно нарушение — слаб самостоятелен сигнал."
+                ),
             )
         )
 
@@ -71,10 +74,10 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
             signal(
                 "incomplete_declaration_row",
                 FAMILY,
-                0.4,
+                0.25,
                 code="DEC04",
                 source_field="court/position",
-                rationale_bg="Непълен запис — липсва съд/длъжност в декларацията.",
+                rationale_bg="Непълен запис — липсва съд/длъжност в декларацията (вероятно непълно извличане).",
             )
         )
 
@@ -84,7 +87,7 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
             signal(
                 "duplicate_magistrate_filings",
                 FAMILY,
-                0.45,
+                0.3,
                 code="DEC05",
                 value=dup_count,
                 source_field="magistrate",

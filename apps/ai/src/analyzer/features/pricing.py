@@ -44,10 +44,10 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
             signal(
                 "round_amount",
                 FAMILY,
-                0.25,
+                0.15,
                 value=amount,
                 source_field="value_amount",
-                rationale_bg="Подозрително кръгла стойност на договора.",
+                rationale_bg="Кръгла стойност на договора — често срещано, слаб самостоятелен сигнал.",
             )
         )
 

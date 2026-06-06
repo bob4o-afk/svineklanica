@@ -20,11 +20,14 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
                 signal(
                     "single_bidder",
                     FAMILY,
-                    0.85,
+                    0.45,
                     code="R018",
                     value=view.bids_count,
                     source_field="bids_count",
-                    rationale_bg="Получена е само една оферта — липсва конкуренция.",
+                    rationale_bg=(
+                        "Получена е само една оферта. В България това е масово (мнозинството поръчки) "
+                        "и само по себе си е слаб сигнал — тежи в комбинация с други белези."
+                    ),
                 )
             )
         elif view.bids_count == 2:
@@ -33,7 +36,7 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
                 signal(
                     "few_bidders",
                     FAMILY,
-                    0.4,
+                    0.3,
                     code="R019",
                     value=view.bids_count,
                     source_field="bids_count",

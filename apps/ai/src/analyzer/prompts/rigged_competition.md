@@ -17,6 +17,12 @@
 - `suspicious_conditions` — цитати с restrictiveness.
 - **rationale_bg** — конкретно на български.
 
+# Калибровка (бъди сдържан)
+
+- Кратки срокове и обявяване през лятото/декември са **чести и често безобидни** — сами по себе си са слаб сигнал.
+- Висока увереност (`rigging_confidence` > 0.7) само когато изискванията **очевидно сочат към един кандидат** (хипер-специфичен опит, който покрива само вътрешен човек) — а не при стандартни изисквания за ръководна длъжност.
+- При гранични случаи дръж увереността ниско (0.1–0.3).
+
 # Structured output (JSON)
 
 Попълни JSON схемата: `rigging_confidence`, `short_deadline`, `hyper_specific_eligibility`, `single_eligible_candidate`, `holiday_timing`, `suspicious_conditions[]`, `rationale_bg`.

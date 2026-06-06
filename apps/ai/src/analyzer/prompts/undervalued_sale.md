@@ -16,6 +16,12 @@
 - `undervaluation_confidence` 0–1; булеви restrictive_terms, short_notice, insider_buyer_pattern.
 - **rationale_bg** — конкретно на български.
 
+# Калибровка (бъди сдържан)
+
+- Един участник в търг за актив е **често срещано** в България — слаб самостоятелен сигнал.
+- Без сравнение с пазарна/балансова стойност не твърди занижена продажба — дръж `undervaluation_confidence` ниско (≤ 0.3).
+- Висока увереност само при **доказана разлика спрямо пазара** или продажба на свързано лице.
+
 # Structured output (JSON)
 
 Попълни JSON схемата: `undervaluation_confidence`, `restrictive_terms`, `short_notice`, `insider_buyer_pattern`, `rationale_bg`.

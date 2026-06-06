@@ -17,7 +17,7 @@ def test_single_bidder_flagged():
     rec = make_record(natural_key="SB", bids_count=1)
     sigs = _signals_for(rec)
     assert "single_bidder" in sigs
-    assert sigs["single_bidder"].risk >= 0.8
+    assert sigs["single_bidder"].risk >= 0.4
 
 
 def test_non_open_procedure_detected():

@@ -23,10 +23,10 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
             signal(
                 "missing_donor",
                 FAMILY,
-                0.5,
+                0.35,
                 code="DON01",
                 source_field="donor",
-                rationale_bg="Липсва име на дарител в регистъра на дарения.",
+                rationale_bg="Липсва име на дарител (възможен анонимен дарител или непълно извличане).",
             )
         )
         return out
@@ -44,10 +44,10 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
             signal(
                 "in_kind_donation",
                 FAMILY,
-                0.55,
+                0.3,
                 code="DON02",
                 source_field="value.amount",
-                rationale_bg="Дарение в натура (без парична стойност) — по-трудно оценимо и по-рисково.",
+                rationale_bg="Дарение в натура (без парична стойност) — обичайно за дарения, но по-трудно оценимо.",
             )
         )
     else:
@@ -56,11 +56,11 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
                 signal(
                     "large_donation",
                     FAMILY,
-                    0.6,
+                    0.45,
                     code="DON03",
                     value=amount,
                     source_field="value.amount",
-                    rationale_bg=f"Единично дарение над {_LARGE_DONATION_BGN:,.0f} лв. — провери за необосновано влияние.",
+                    rationale_bg=f"Едро единично дарение над {_LARGE_DONATION_BGN:,.0f} лв. — проверете дарителя за връзка с поръчки.",
                 )
             )
         if is_round_amount(amount):
@@ -68,11 +68,11 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
                 signal(
                     "round_donation",
                     FAMILY,
-                    0.45,
+                    0.2,
                     code="DON04",
                     value=amount,
                     source_field="value.amount",
-                    rationale_bg="Подозрително кръгла сума на дарението.",
+                    rationale_bg="Кръгла сума на дарението — често срещано, слаб самостоятелен сигнал.",
                 )
             )
 
@@ -82,7 +82,7 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
             signal(
                 "repeat_donor",
                 FAMILY,
-                0.65,
+                0.5,
                 code="DON05",
                 value=dup_count,
                 source_field="donor",

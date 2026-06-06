@@ -80,7 +80,7 @@ def test_declarations_feature_late_filing():
         magistrate="Мария Георгиева",
         position="Прокурор",
         court="Районна прокуратура",
-        declared_at="2026-03-01T00:00:00Z",
+        declared_at="2026-06-01T00:00:00Z",
         sphere=SPHERE_JUDICIARY,
     )
     ctx = context_from_records([rec])
@@ -132,7 +132,7 @@ def test_judiciary_declarations_hard_trip():
         magistrate="Петър Иванов",
         position="Съдия",
         court="Окръжен съд",
-        declared_at="2026-04-01T00:00:00Z",
+        declared_at="2026-06-01T00:00:00Z",
         sphere=SPHERE_JUDICIARY,
     )
     ctx = context_from_records([rec])

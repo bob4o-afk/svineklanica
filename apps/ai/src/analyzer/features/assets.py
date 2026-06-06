@@ -18,11 +18,11 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
             signal(
                 "asset_single_bidder",
                 FAMILY,
-                0.65,
+                0.4,
                 code="ASSET01",
                 value=1,
                 source_field="bids_count",
-                rationale_bg="Един участник в търг за актив — липса на конкуренция.",
+                rationale_bg="Един участник в търг за актив — често срещано, слаб самостоятелен сигнал.",
             )
         )
 
@@ -31,11 +31,11 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
             signal(
                 "asset_round_amount",
                 FAMILY,
-                0.4,
+                0.25,
                 code="ASSET02",
                 value=view.value_amount,
                 source_field="value",
-                rationale_bg="Кръгла стойност на продажба — може да е символична/занижена.",
+                rationale_bg="Кръгла стойност на продажба — често срещано, проверете спрямо пазарната цена.",
             )
         )
 
@@ -45,7 +45,7 @@ def extract(view: TenderView, ctx: AnalysisContext) -> list[Signal]:
             signal(
                 "short_asset_notice",
                 FAMILY,
-                clamp01(0.4 + (14 - window) / 14 * 0.4),
+                clamp01(0.3 + (14 - window) / 14 * 0.4),
                 code="ASSET03",
                 value=round(window, 1),
                 source_field="published_at..deadline",

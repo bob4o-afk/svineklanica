@@ -17,6 +17,12 @@
 - `suspicious_conditions` — цитати с restrictiveness.
 - **rationale_bg** — конкретно на български.
 
+# Калибровка (бъди сдържан)
+
+- Конкурсите по Наредба №1/2017 и ЗСВ имат **стандартни срокове и изисквания за стаж** — наличието им не е манипулация.
+- Кратък срок или летен/празничен период сами по себе си са слаб сигнал.
+- Висока увереност (> 0.7) само при **ясно скроени условия** (точен стаж в конкретен орган, който покрива един кандидат) или документирана манипулация на атестацията.
+
 # Structured output (JSON)
 
 Попълни JSON схемата: `rigging_confidence`, `rushed_procedure`, `atestation_manipulation`, `tailored_seniority`, `parachuting_candidate`, `single_eligible_candidate`, `holiday_timing`, `suspicious_conditions[]`, `rationale_bg`.
