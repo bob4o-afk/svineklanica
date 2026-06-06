@@ -4,6 +4,7 @@ import { AppErrorBoundary } from '@/components/feedback/AppErrorBoundary';
 import { AppContainer } from './AppContainer';
 import { AppFooter } from './AppFooter';
 import { AppHeader } from './AppHeader';
+import { AppInstallPrompt } from './AppInstallPrompt';
 import { AppWatermark } from './AppWatermark';
 
 /** The shared frame for every route: header, the routed page (guarded by an
@@ -42,6 +43,7 @@ export function AppLayout() {
         </AppContainer>
       </Box>
       <AppFooter />
+      <AppInstallPrompt />
     </Box>
   );
 }

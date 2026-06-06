@@ -11,6 +11,7 @@ import { AppFlagBadge } from '@/components/flags/AppFlagBadge';
 import { AppSectorBadge } from '@/components/flags/AppSectorBadge';
 import { AppSeverityChip } from '@/components/flags/AppSeverityChip';
 import { AppSourceLink } from '@/components/flags/AppSourceLink';
+import { AppTag } from '@/components/flags/AppTag';
 import { AppTldr } from '@/components/flags/AppTldr';
 import { useFlagPost } from '@/hooks/queries/useFlagPost';
 import { formatDate } from '@/lib/date';
@@ -53,6 +54,9 @@ export function PostView({ publicId }: PostViewProps) {
         <AppSeverityChip severity={flag.severity} />
         <AppFlagBadge type={flag.type} />
         {flag.category !== undefined ? <AppSectorBadge sector={flag.category} /> : null}
+        {(flag.tags ?? []).map((tag) => (
+          <AppTag key={tag} tag={tag} />
+        ))}
       </Stack>
 
       <Typography variant="h4" component="h1">

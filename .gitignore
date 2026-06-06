@@ -47,6 +47,12 @@ Thumbs.db
 .vscode/
 *.log
 
+# Playwright MCP QA scratch (page/console snapshots, screenshots) — never commit
+.playwright-mcp/
+
+# Stray local proxy/debug capture — never commit
+proxy_log.txt
+
 # Scraping layer (apps/scraper, Python)
 /apps/scraper/.venv/
 __pycache__/

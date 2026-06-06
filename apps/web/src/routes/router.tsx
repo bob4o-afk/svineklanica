@@ -11,12 +11,17 @@ import { NotFoundPage } from '@/pages/NotFoundPage';
 import { PostPage } from '@/pages/PostPage';
 import { PricePage } from '@/pages/PricePage';
 import { SearchPage } from '@/pages/SearchPage';
-import { AdminPlaceholderPage } from '@/pages/admin/AdminPlaceholderPage';
+import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
+import { AdminLoginPage } from '@/pages/admin/AdminLoginPage';
+import { AdminPendingPage } from '@/pages/admin/AdminPendingPage';
+import { AdminReviewPage } from '@/pages/admin/AdminReviewPage';
+import { AdminSourcesPage } from '@/pages/admin/AdminSourcesPage';
+import { AdminLayout } from '@/features/admin/AdminLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 import { paths, patterns } from './paths';
 
 /** The whole route tree under one shared AppLayout. Public routes are eager (small); the admin
- *  area sits behind ProtectedRoute and is a placeholder until Phase 4. */
+ *  area sits behind ProtectedRoute → AdminLayout (Phase 4: login, review queue, sources). */
 export const router = createBrowserRouter([
   {
     element: <AppLayout />,
@@ -31,14 +36,19 @@ export const router = createBrowserRouter([
       { path: patterns.network, element: <NetworkPage /> },
       { path: paths.map, element: <MapPage /> },
       { path: paths.about, element: <AboutPage /> },
-      { path: paths.adminLogin, element: <AdminPlaceholderPage /> },
+      { path: paths.adminLogin, element: <AdminLoginPage /> },
       {
         element: <ProtectedRoute />,
         children: [
-          { path: paths.admin, element: <AdminPlaceholderPage /> },
-          { path: paths.adminPending, element: <AdminPlaceholderPage /> },
-          { path: patterns.adminReview, element: <AdminPlaceholderPage /> },
-          { path: paths.adminSources, element: <AdminPlaceholderPage /> },
+          {
+            element: <AdminLayout />,
+            children: [
+              { path: paths.admin, element: <AdminDashboardPage /> },
+              { path: paths.adminPending, element: <AdminPendingPage /> },
+              { path: patterns.adminReview, element: <AdminReviewPage /> },
+              { path: paths.adminSources, element: <AdminSourcesPage /> },
+            ],
+          },
         ],
       },
       { path: '*', element: <NotFoundPage /> },

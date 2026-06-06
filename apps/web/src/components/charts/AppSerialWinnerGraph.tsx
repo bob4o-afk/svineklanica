@@ -32,7 +32,7 @@ export function AppSerialWinnerGraph({ graph, height = 480 }: AppSerialWinnerGra
         background: isCompany ? palette.alarm : theme.palette.background.paper,
         color: isCompany ? '#ffffff' : theme.palette.text.primary,
         border: isShell
-          ? `2px dashed ${palette.rust}`
+          ? `3px dashed ${palette.rust}`
           : `1px solid ${isCompany ? palette.alarm : theme.palette.divider}`,
         borderRadius: 2,
         padding: '8px 12px',
@@ -72,6 +72,7 @@ export function AppSerialWinnerGraph({ graph, height = 480 }: AppSerialWinnerGra
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        colorMode={theme.palette.mode}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         nodesConnectable={false}

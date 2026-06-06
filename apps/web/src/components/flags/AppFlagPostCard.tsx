@@ -12,6 +12,7 @@ import { AppFlagBadge } from './AppFlagBadge';
 import { AppSectorBadge } from './AppSectorBadge';
 import { AppSeverityChip } from './AppSeverityChip';
 import { AppSourceLink } from './AppSourceLink';
+import { AppTag } from './AppTag';
 
 /** The single subject line for a flag, chosen by its subject type. */
 function subjectLine(subject: FlagSubject): string {
@@ -43,6 +44,9 @@ export function AppFlagPostCard({ flag }: AppFlagPostCardProps) {
             <AppSeverityChip severity={flag.severity} />
             <AppFlagBadge type={flag.type} />
             {flag.category !== undefined ? <AppSectorBadge sector={flag.category} /> : null}
+            {(flag.tags ?? []).map((tag) => (
+              <AppTag key={tag} tag={tag} />
+            ))}
           </Stack>
           <Typography
             variant="h6"
