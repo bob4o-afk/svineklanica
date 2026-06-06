@@ -16,3 +16,7 @@ storage/framework/cache/*
 storage/framework/sessions/*
 storage/framework/views/*
 .phpunit.result.cache
+# Host-built package manifest / config cache must NOT leak into the image — it has
+# host-specific paths/providers and breaks boot ("cache.store does not exist").
+# The image regenerates these fresh at runtime (entrypoint.sh).
+bootstrap/cache/*.php

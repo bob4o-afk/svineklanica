@@ -1,13 +1,14 @@
 # PRODUCTION overlay — PULLS prebuilt images from the registry (no build here).
 # CI (release.yml) builds + pushes images on a vX.Y.Z tag; the VM pulls + runs.
 #
-#   export IMAGE_TAG=v1.2.3
-#   docker compose -f docker-compose.prod.yml pull
-#   docker compose -f docker-compose.prod.yml up -d
-#   docker compose -f docker-compose.prod.yml exec app php artisan migrate --force
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml pull
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml exec app php artisan migrate --force
 #
-# Set REGISTRY_OWNER + IMAGE_TAG in the VM's .env. db/redis are NOT exposed to
-# the host here (internal only). For real scale, swap db/redis for managed services.
+# ALL prod config lives in ONE file: .env.prod (local dev uses .env). `--env-file
+# .env.prod` makes it the source for BOTH the ${...} interpolation below
+# (REGISTRY_OWNER, IMAGE_TAG, APP_DOMAIN, DB_*) AND, via `env_file:`, the app
+# container's runtime env. db/redis are NOT exposed to the host (internal only).
 
 services:
   proxy:
@@ -18,8 +19,10 @@ services:
       - "443:443"
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
-      API_UPSTREAM: app:8000
-      WEB_UPSTREAM: web:80      # prod web image is nginx on :80
+      API_UPSTREAM_HOST: app
+      API_UPSTREAM_PORT: "8000"
+      WEB_UPSTREAM_HOST: web
+      WEB_UPSTREAM_PORT: "80"   # prod web image is nginx on :80
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -31,10 +34,18 @@ services:
   app:
     image: ${REGISTRY:-ghcr.io}/${REGISTRY_OWNER}/liberhack-api:${IMAGE_TAG:-latest}
     restart: always
-    env_file: .env
-    command: php artisan serve --host=0.0.0.0 --port=8000
+    env_file: .env.prod
+    # No command override: the FrankenPHP image's own CMD serves the app on :8000.
     expose:
       - "8000"
+    # The rolling deploy waits for this to go healthy before draining the old
+    # container — so a broken release never replaces a working one (zero-downtime).
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8000/_health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     depends_on:
       db:
         condition: service_healthy
@@ -44,7 +55,7 @@ services:
   queue:
     image: ${REGISTRY:-ghcr.io}/${REGISTRY_OWNER}/liberhack-api:${IMAGE_TAG:-latest}
     restart: always
-    env_file: .env
+    env_file: .env.prod
     command: php artisan queue:work --tries=3 --backoff=5
     depends_on:
       - app
@@ -53,7 +64,7 @@ services:
   scheduler:
     image: ${REGISTRY:-ghcr.io}/${REGISTRY_OWNER}/liberhack-api:${IMAGE_TAG:-latest}
     restart: always
-    env_file: .env
+    env_file: .env.prod
     command: php artisan schedule:work
     depends_on:
       - app
@@ -63,9 +74,17 @@ services:
     restart: always
     expose:
       - "80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   db:
-    image: postgres:16-alpine
+    # pgvector-enabled Postgres 16 (backend.md §12 — vector search + detectors).
+    # For real scale, swap for a managed Postgres that has the pgvector extension.
+    image: pgvector/pgvector:pg16
     restart: always
     environment:
       POSTGRES_DB: ${DB_DATABASE}

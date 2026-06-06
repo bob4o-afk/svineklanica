@@ -1,0 +1,17 @@
+# FrankenPHP internal server for the Laravel API (prod runtime).
+# Plain HTTP on :8000 — TLS is terminated by the EXTERNAL Caddy proxy (root
+# Caddyfile), which reverse-proxies here. FrankenPHP handles requests
+# concurrently (unlike `artisan serve`) and reloads gracefully, which is what
+# makes the rolling, zero-downtime deploy real.
+{
+	# No auto-HTTPS here; the edge proxy owns certificates.
+	auto_https off
+	# No admin API needed inside the app container.
+	admin off
+}
+
+:8000 {
+	root * /app/public
+	encode gzip
+	php_server
+}

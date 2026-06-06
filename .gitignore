@@ -23,11 +23,22 @@
 /apps/web/dev-dist/
 /apps/web/.vite/
 /apps/web/coverage/
+/apps/web/.pnpm-store/
 node_modules/
 
 # Docker / Caddy
 caddy_data/
 caddy_config/
+
+# Local scratch / working notes (not a deliverable)
+/todo/
+
+# Secret-bearing scratch files — NEVER commit (private keys, passwords)
+temp_env.txt
+*_env.txt
+*.pem
+id_ed25519*
+id_rsa*
 
 # Editor / OS
 .DS_Store

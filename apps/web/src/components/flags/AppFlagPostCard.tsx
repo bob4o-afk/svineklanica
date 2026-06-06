@@ -39,21 +39,6 @@ export function AppFlagPostCard({ flag }: AppFlagPostCardProps) {
       <CardActionArea component={RouterLink} to={paths.post(flag.public_id)}>
         <CardContent>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }} alignItems="center">
-            {/* Flag type label in JetBrains Mono — reads like a system log entry */}
-            <Typography
-              component="span"
-              sx={{
-                fontFamily: fonts.mono,
-                fontWeight: 700,
-                fontSize: '0.62rem',
-                letterSpacing: '0.14em',
-                textTransform: 'uppercase',
-                color: palette.alarm,
-                mr: 0.5,
-              }}
-            >
-              {t(flagTypeMeta[flag.type].i18nKey)}
-            </Typography>
             <AppSeverityChip severity={flag.severity} />
             <AppFlagBadge type={flag.type} />
           </Stack>

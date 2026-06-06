@@ -23,6 +23,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # GHCR repository names must be lowercase; the owner ("BabyNejii") isn't.
+      - name: Lowercase repository owner
+        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
       - uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
@@ -36,11 +40,12 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: ./Dockerfile.prod
           target: prod
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/liberhack-api:${{ github.ref_name }}
-            ghcr.io/${{ github.repository_owner }}/liberhack-api:latest
+            ghcr.io/${{ env.OWNER_LC }}/liberhack-api:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER_LC }}/liberhack-api:latest
 
       - name: Build & push Web image
         uses: docker/build-push-action@v6
@@ -51,8 +56,8 @@ jobs:
           build-args: |
             VITE_MUI_X_LICENSE_KEY=${{ secrets.VITE_MUI_X_LICENSE_KEY }}
           tags: |
-            ghcr.io/${{ github.repository_owner }}/liberhack-web:${{ github.ref_name }}
-            ghcr.io/${{ github.repository_owner }}/liberhack-web:latest
+            ghcr.io/${{ env.OWNER_LC }}/liberhack-web:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER_LC }}/liberhack-web:latest
 
   deploy:
     name: Deploy to VM (enable with repo variable DEPLOY_ENABLED=true)
@@ -60,22 +65,104 @@ jobs:
     if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - name: SSH in, pull new images, migrate
+      - name: SSH in, pull, migrate, ROLLING (zero-downtime) swap
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_SSH_HOST }}
           username: ${{ secrets.DEPLOY_SSH_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            set -e
             cd ${{ secrets.DEPLOY_PATH }}
-            sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${{ github.ref_name }}/" .env || echo "IMAGE_TAG=${{ github.ref_name }}" >> .env
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
-            docker compose -f docker-compose.prod.yml exec -T app php artisan migrate --force
 
-  notify:
-    name: Email release notifier
-    needs: build
+            # Make compose AND docker-rollout use the prod file + env for ${...} interpolation.
+            export COMPOSE_FILE=docker-compose.prod.yml
+            export COMPOSE_ENV_FILES=.env.prod
+            TAG="${{ github.ref_name }}"
+
+            # Install the docker-rollout CLI plugin on first run (scales a service up,
+            # waits for the new container's healthcheck, then drains the old one).
+            # Install into the dir THIS docker actually reads (DOCKER_CONFIG honored),
+            # so the plugin is discoverable even when docker is invoked via sudo.
+            PLUGIN_DIR="${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins"
+            if ! docker rollout --help >/dev/null 2>&1; then
+              mkdir -p "$PLUGIN_DIR"
+              curl -fsSL https://raw.githubusercontent.com/Wowu/docker-rollout/master/docker-rollout \
+                -o "$PLUGIN_DIR/docker-rollout"
+              chmod +x "$PLUGIN_DIR/docker-rollout"
+            fi
+
+            # Point the stack at the freshly built tag, then pull the images.
+            sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${TAG}/" .env.prod || echo "IMAGE_TAG=${TAG}" >> .env.prod
+            docker compose pull
+
+            # Infra first; --wait BLOCKS until the Postgres healthcheck passes, so the
+            # migration below doesn't race a still-starting DB ("connection refused").
+            docker compose up -d --wait db redis
+
+            # Migrate with the NEW image, before swapping the app in (keep migrations
+            # backward-compatible so the old container still works during the overlap).
+            docker compose run --rm --no-deps app php artisan migrate --force
+
+            # Zero-downtime rolling swap of the web-facing services. Roll only when the
+            # service is already running AND the rollout plugin is usable; otherwise
+            # (first deploy, or plugin unavailable on this host) recreate in place so the
+            # release never dies on the swap — at the cost of a brief restart blip.
+            for svc in app web; do
+              if docker compose ps --status running --services | grep -qx "$svc" \
+                 && docker rollout --help >/dev/null 2>&1; then
+                docker rollout "$svc"
+              else
+                docker compose up -d "$svc"
+              fi
+            done
+
+            # Background workers + edge proxy: recreate with the new image (no inbound
+            # traffic hits the workers, and the proxy reload is graceful).
+            docker compose up -d --no-deps queue scheduler proxy
+
+  # --- Email notifications: one when the release STARTS, one on SUCCESS,
+  #     one on FAILURE (saying which stage failed). All via the same SMTP secrets.
+  notify-start:
+    name: Email — release started
+    runs-on: ubuntu-latest
+    steps:
+      - name: Normalize sender address
+        id: from
+        env:
+          RAW_FROM: ${{ secrets.MAIL_FROM_ADDRESS }}
+        run: |
+          # Strip whitespace/newlines that sneak in when a secret is set via echo/pipe,
+          # then 501-proof it: must be a single bare local@domain (no display name, no quotes).
+          addr="$(printf '%s' "$RAW_FROM" | tr -d '[:space:]')"
+          if ! printf '%s' "$addr" | grep -Eq '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'; then
+            echo "::error::MAIL_FROM_ADDRESS is not a valid bare email (got a name, quotes, or whitespace?). Set it to e.g. watchdog@yourdomain.bg"
+            exit 1
+          fi
+          echo "addr=$addr" >> "$GITHUB_OUTPUT"
+
+      - name: Send "started" email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_HOST }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          from: LiberHack Watchdog <${{ steps.from.outputs.addr }}>
+          to: ${{ secrets.RELEASE_NOTIFY_TO }}
+          subject: "LiberHack Watchdog — release ${{ github.ref_name }} STARTED ⏳"
+          body: |
+            A release of LiberHack Watchdog has started.
+
+            Version: ${{ github.ref_name }}
+            Commit:  ${{ github.sha }}
+            Follow it: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  notify-success:
+    name: Email — release succeeded
+    needs: [test, build, deploy]
+    # Runs only if everything that ran passed (deploy may be skipped when DEPLOY_ENABLED!=true).
+    if: ${{ always() && needs.test.result == 'success' && needs.build.result == 'success' && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -94,24 +181,86 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Send release email
+      - name: Normalize sender address
+        id: from
+        env:
+          RAW_FROM: ${{ secrets.MAIL_FROM_ADDRESS }}
+        run: |
+          # Strip whitespace/newlines that sneak in when a secret is set via echo/pipe,
+          # then 501-proof it: must be a single bare local@domain (no display name, no quotes).
+          addr="$(printf '%s' "$RAW_FROM" | tr -d '[:space:]')"
+          if ! printf '%s' "$addr" | grep -Eq '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'; then
+            echo "::error::MAIL_FROM_ADDRESS is not a valid bare email (got a name, quotes, or whitespace?). Set it to e.g. watchdog@yourdomain.bg"
+            exit 1
+          fi
+          echo "addr=$addr" >> "$GITHUB_OUTPUT"
+
+      - name: Send "success" email
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.MAIL_HOST }}
           server_port: ${{ secrets.MAIL_PORT }}
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          from: ${{ secrets.MAIL_FROM_ADDRESS }}
+          from: LiberHack Watchdog <${{ steps.from.outputs.addr }}>
           to: ${{ secrets.RELEASE_NOTIFY_TO }}
-          subject: "LiberHack Watchdog — released ${{ github.ref_name }}"
+          subject: "LiberHack Watchdog — released ${{ github.ref_name }} ✅"
           body: |
-            A new version of LiberHack Watchdog has shipped.
+            A new version of LiberHack Watchdog has shipped successfully.
 
             Version: ${{ github.ref_name }}
-            Images:  ghcr.io/${{ github.repository_owner }}/liberhack-api:${{ github.ref_name }}
-                     ghcr.io/${{ github.repository_owner }}/liberhack-web:${{ github.ref_name }}
             Commit:  ${{ github.sha }}
-            Build:   passed ✅
+            Deploy:  ${{ needs.deploy.result }}
+            Run:     ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
             Changes since the previous tag:
             ${{ steps.log.outputs.changelog }}
+
+  notify-failure:
+    name: Email — release failed
+    needs: [test, build, deploy]
+    # Runs if ANY stage failed; reports which one.
+    if: ${{ always() && (needs.test.result == 'failure' || needs.build.result == 'failure' || needs.deploy.result == 'failure') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine which stage failed
+        id: which
+        run: |
+          F=""
+          [ "${{ needs.test.result }}" = "failure" ] && F="$F tests"
+          [ "${{ needs.build.result }}" = "failure" ] && F="$F build"
+          [ "${{ needs.deploy.result }}" = "failure" ] && F="$F deploy"
+          echo "stage=${F# }" >> "$GITHUB_OUTPUT"
+
+      - name: Normalize sender address
+        id: from
+        env:
+          RAW_FROM: ${{ secrets.MAIL_FROM_ADDRESS }}
+        run: |
+          # Strip whitespace/newlines that sneak in when a secret is set via echo/pipe,
+          # then 501-proof it: must be a single bare local@domain (no display name, no quotes).
+          addr="$(printf '%s' "$RAW_FROM" | tr -d '[:space:]')"
+          if ! printf '%s' "$addr" | grep -Eq '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'; then
+            echo "::error::MAIL_FROM_ADDRESS is not a valid bare email (got a name, quotes, or whitespace?). Set it to e.g. watchdog@yourdomain.bg"
+            exit 1
+          fi
+          echo "addr=$addr" >> "$GITHUB_OUTPUT"
+
+      - name: Send "failure" email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_HOST }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          from: LiberHack Watchdog <${{ steps.from.outputs.addr }}>
+          to: ${{ secrets.RELEASE_NOTIFY_TO }}
+          subject: "LiberHack Watchdog — release ${{ github.ref_name }} FAILED ❌"
+          body: |
+            A release of LiberHack Watchdog FAILED.
+
+            Version:       ${{ github.ref_name }}
+            Failed stage:  ${{ steps.which.outputs.stage }}
+            Results:       tests=${{ needs.test.result }} build=${{ needs.build.result }} deploy=${{ needs.deploy.result }}
+            Commit:        ${{ github.sha }}
+            Logs:          ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
