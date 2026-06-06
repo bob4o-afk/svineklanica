@@ -6,6 +6,53 @@
 > 1. **The prod infra is already scaffolded** (Docker, CI, Caddy TLS, health checks, prod compose, K8s, monitoring). Prod-readiness is mostly *flipping on* what's already here — cheap.
 > 2. **"Biggest scope" = go deep+wide WITHIN procurement** (more sources, more detectors, more polish), **not** spreading across many corruption domains. Depth in one vertical reads as "it works"; breadth across five reads as "nothing works." (See `IDEA.md` Decision 1.)
 
+---
+
+# ▶ CURRENT STATUS & HANDOFF (updated 2026-06-06)
+
+_Read this first. It's the live picture so a new agent can continue with minimal instructions. The tiered ranking below (Tier 0–4) is the longer-term reference._
+
+## Where we are — `origin/main` @ `ad5e27f`, all gates green
+**Frontend gates:** `typecheck · lint · 39 vitest · build · pnpm audit --audit-level=high` all pass.
+
+### ✅ Frontend (`apps/web`) — shipped, runs entirely on MSW mocks
+Stack: React 19 + TS (strict, `exactOptionalPropertyTypes`) + MUI v6/MUI X v7 + Tailwind (preflight off, `important:'#root'`) + React Router v6 (data router) + TanStack Query v5 + i18next (BG-first) + Vitest. Mocks are **env-gated** (`VITE_ENABLE_MOCKS`, default on in dev).
+- **Feed** (`/feed`): infinite scroll, faceted filters (type · severity · **sector**), sort; region drill-in.
+- **Post** (`/posts/:id`): TL;DR, sourced explanation, evidence, subject cross-links, price/network links.
+- **Entities**: authority (`/authorities/:id`) + company (`/companies/:eik`) with flag-history grids + shell `related`.
+- **Search** (`/search`), **Home** hero.
+- **Phase 3 viz** (all reachable): price-over-time chart (`/price/:seriesKey`, MUI X), serial-winner graph (`/network/:publicId`, React Flow), **corruption-by-region map** (`/map`, d3-geo choropleth on GISCO NUTS3) with a **sector filter** + click-to-expand → region feed (with feed **prefetch** during the animation).
+- **Sector categories** (училище/болница/път…) CPV-derived (`lib/sectors.ts`); dark/light; themed scrollbar; scroll-to-top; favicon.
+
+### ✅ Backend (Laravel, repo root) — merged, but thin public API
+Schema migrated (pgvector, authorities, companies, tenders, tender_items, price_snapshots, ingest_records, **flags**, posts, subscribers); `ingest:run` pipeline; Sanctum auth; honeypot/blacklist; notifications; CI + GHCR release + auto-deploy.
+⚠️ **Public API exposes only a generic CMS `Post`** (`GET /api/posts`, `/api/posts/{post}`). **No detector, and no flag / entity / price-series / search / graph endpoints. No real procurement data ingested yet.**
+
+### 🟡 Scraper + embeddings (`apps/scraper`, Python) — on `feat/scraper` / `feat/embeddings`, **NOT merged**
+
+## 🔴 THE one blocker: the FE↔BE seam
+The frontend consumes a rich `FlagPost` contract (`apps/web/src/types/contract.ts`); the backend serves generic posts. **Real data is blocked until the backend ships the endpoints + shapes documented in [`apps/web/API_SEAM.md`](../apps/web/API_SEAM.md)** (flag-posts feed/detail, authorities, companies, price-series, graphs/serial-winner, regions/aggregate, search — plus `category` (CPV-derived) and `series_key`). Until then the frontend stays on MSW.
+
+## ▶ What to do next (prioritized)
+1. **[BACKEND — highest payoff] Make real data flow.** Implement the read endpoints per `API_SEAM.md` (Resources carrying `#[TypeScript]`), write **one detector** (overpricing or serial-winner → `Flag` rows), and ingest **one real source** (TED or data.egov first — see `.claude/rules/data-sources.md` + `SOURCES.md`). Merge `feat/scraper`.
+2. **[FRONTEND] Flip to real data** once endpoints exist: `composer sync:api-types` → `apps/web/src/types/generated.d.ts`, point `types/api.ts` at it, reconcile vs `contract.ts`, set `VITE_ENABLE_MOCKS=false` + `VITE_API_URL`. Verify cookie/CORS/CSP `connect-src`.
+3. **[FRONTEND] Admin (Phase 4)**: Sanctum-cookie login, `ProtectedRoute`, pending queue, **ReviewPanel** (verify source + edit + approve/reject), Sources CRUD. Stubs already routed (`/admin/*`).
+4. **[FRONTEND] both-mode Playwright QA** of the viz screens (price/network/map) — not yet done; rule: verify light AND dark.
+5. **Stretch:** PWA install + RSS + Sentry (Phase 5); Playwright e2e + axe in CI (Phase 6); prod deploy/tunnel (Tier 3).
+
+## How to run (Windows)
+- Frontend: `corepack pnpm -C apps/web dev` · `… build` · `… typecheck` · `… lint` · `… exec vitest run`. Node 20; pnpm is corepack-only.
+- If `/api/*` 404s in dev after edits: a stale **service worker** — DevTools → Application → unregister, hard-reload. (PWA SW is disabled in dev; MSW owns it.)
+
+## Notes / gotchas for a new agent
+- **Stay in your lane** (frontend · backend · scraping); seams are `API_SEAM.md` (FE↔BE) and the NDJSON contract (scraper→BE). Per-lane `CLAUDE.md` + `.claude/rules/`.
+- The **Bash tool runs bash**, which strips PowerShell `$vars` inside `-Command "..."` → use a `.ps1` + `-File`, or arg forms without `$`.
+- **`git push` is gated** (agent allowlist) → the human runs it (`! git push origin <branch>:main`).
+- Map geo = **Eurostat GISCO NUTS3** (`apps/web/public/geo/bg-provinces.geojson`, attribution in `SOURCES.md`). ⚠️ `frontend.md` §10 says the map should be **Mapbox**; we deliberately shipped a **d3-geo choropleth** (offline, no token — demo-safe). Revisit if a token + live basemap is wanted.
+- License decision (GPL vs MIT) still open (CLAUDE.md §2.5 vs `LICENSE`).
+
+---
+
 ## Legend
 - ⏱️ Speed: ⚡ hours · 🔨 ~half-day · 🏗️ a day+/risky
 - 💪 How well it'll come out: 🟢 solid/prod-grade · 🟡 fine · 🔴 fragile (data/time risk)
