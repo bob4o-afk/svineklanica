@@ -20,8 +20,21 @@
 | **data.egov.bg** — Портал за отворени данни | Published datasets, possibly procurement + spending | Clean open data, no scraping needed | Datasets / API |
 | **SEBRA** (Система за електронни бюджетни разплащания) via minfin.bg / data.egov.bg | Actual budget payments by spenders | **Powers the "delayed payments" detector** — contracted vs paid | Reports / open data |
 | **Търговски регистър** — `portal.registryagency.bg` | Company EIK, address, owners, managers | **Powers "serial winner / shell company" clustering** — link companies by shared owner/address/EIK | Web; check open-data dumps |
+| **РУО архиви** — Регионални управления на образованието (`ruo-*.bg` / mon.bg) | **Public** job-competition adverts in education (archive) | **Backlog category `конкурси за работа`** (CLAUDE.md §1.4): rigged hiring — short deadline + чл. 67 + ultra-specific qualification. Public archive only. | Web archive; scrape politely |
+
+### Sphere-specific authorities (demo focus — judiciary / healthcare / police)
+
+| Sphere | Source | What it gives us | Format (verify) |
+|---|---|---|---|
+| 🏥 **здравеопазване** | **НЗОК** `nhif.bg` | Contracts with hospitals/traders + paid activity-code prices → **overpricing + payment** detectors | Excel/registers |
+| 👮 **полиция** | **МВР — Дирекция ОП** `mvr.bg/dop` (профил на купувача) | Interior-ministry procurement (vehicles, gear, IT) | Web profile |
+| 🏛️ **съдебна система** | **ВСС** `profile-op.vss.justice.bg` | Judiciary governing-body procurement | Web profile |
+
+> Prefer attributing a sphere by **filtering ЕОП/TED on the contracting authority** rather than scraping each profile; the profiles above are the human-readable provenance fallback.
 
 **Demo strategy:** TED + data.egov.bg are the lowest-friction structured sources — get one of them ingesting **first** to guarantee real data in the demo. Treat ЕОП/РОП scraping as the deeper, higher-payoff target once the pipeline works.
+
+> 📑 **The verified, URL-by-URL source list lives in [`SOURCES.md`](../../SOURCES.md)** (repo root), organized by Sphere → Category with reachability status. Keep it updated as we wire each source.
 
 ## 2. Ingest discipline ⭐
 
@@ -38,6 +51,8 @@
 - **CPV codes** (Common Procurement Vocabulary) are the reliable category key — prefer them over free-text where present.
 - **Companies** unify on **EIK** (БУЛСТАТ), not name (names vary, get renamed, and shells reuse addresses). Cross-link via Търговски регистър.
 - **Money:** normalize currency (BGN/EUR) and with/without ДДС (VAT) before comparing prices — a 10-vs-100 gap is meaningless if one is per-unit and one is total, or one includes VAT.
+- **Geo (for the Mapbox map, CLAUDE.md §1.2):** every record should carry a **location** — region/municipality, and ideally `lat`/`lng`. Derive from the contracting authority's address or the municipality name (geocode once at ingest, or map municipality → centroid). Keep the raw place string too. No coords → the record just doesn't pin on the map (don't fabricate a location).
+- **Sphere/category tagging:** at ingest, map each record to a **`sphere`** and **`category`** (CLAUDE.md §1.0) — from the contracting authority type / CPV / source. Where it can't be inferred, leave it unset rather than guessing.
 
 ## 4. Flag provenance schema (suggested)
 

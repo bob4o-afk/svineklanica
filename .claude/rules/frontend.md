@@ -55,3 +55,17 @@
 ## 8. Icons
 
 - **Phosphor icons** by their `XxxIcon` alias form (`InfoIcon`, `WarningIcon`, `XIcon`) — that's the standard; write it that way from the start. We never introduce the deprecated bare names (`Info`, `X`, …).
+
+## 9. Posts feed: cache + view counts ⭐
+
+- The home experience is a feed of **posts** (latest corruption write-ups). **Cache the posts client-side** — fetch through the `http` wrapper into a query cache (TanStack Query / SWR), serve stale-while-revalidate so the feed is instant and we don't re-hit the API on every navigation. Bust/refetch on focus or when a post is opened.
+- Each post card shows its **view count**. A view is registered **once per IP** (the backend dedups by IP and `+1`s in Redis — backend.md §14); the client just renders the count and triggers the view on open. Don't increment optimistically per render — the count is authoritative from the API.
+- Counts/dates/numbers go through the shared formatters (§6) — never raw.
+
+## 10. The map & the price graph — flagship views ⭐ (CLAUDE.md §1.2)
+
+These two are headline demo features, not nice-to-haves. Both obey every rule above (App* wrapper, i18n, formatters, tokens, loading states).
+
+- **🗺️ Map = Mapbox.** Use **Mapbox GL** (`mapbox-gl` / `react-map-gl`), wrapped in a single **`AppMap`** component — never drop raw Mapbox JSX into a page. Token from **`VITE_MAPBOX_TOKEN`** (env, never committed; document it in `.env.example`). Markers/clusters are **coloured by sphere and by severity band** — and those colours come from the **MUI theme / Tailwind tokens** (§1), never hardcoded hex. The map is **filterable by Sphere → Category → Severity** (CLAUDE.md §1.0); clicking a marker opens the records there. Cluster at low zoom for performance; show a skeleton while tiles/data load (§7).
+- **📈 Price-over-time chart.** Use **MUI X charts** in an **`AppPriceChart`** wrapper — a line of price across **snapshots** for a product/category, with the outlier tender highlighted. All money/dates through the shared formatters (§6). Loading + empty states required (§7).
+- **Severity & badges.** The 🟢/🟡/🔴 severity band, sphere, category, and the punk tags (`крадене на пари`, `кофти сделки`, `шуши-муши` — CLAUDE.md §1.0.1) render through one **`AppFlagBadge`** component; all labels via i18n (Bulgarian-first), all colours from tokens.

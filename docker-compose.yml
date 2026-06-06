@@ -26,6 +26,11 @@ services:
       target: dev
     restart: unless-stopped
     env_file: .env
+    # RUN_INIT makes THIS container the initializer: composer install (if needed),
+    # key:generate (if empty), then migrate — before `artisan serve` (entrypoint.sh).
+    environment:
+      RUN_INIT: "true"
+    entrypoint: ["sh", "./docker/dev/entrypoint.sh"]
     volumes:
       - .:/var/www/html
     command: php artisan serve --host=0.0.0.0 --port=8000
@@ -43,6 +48,8 @@ services:
       target: dev
     restart: unless-stopped
     env_file: .env
+    # No RUN_INIT: the worker only waits for the app container's deps, never migrates.
+    entrypoint: ["sh", "./docker/dev/entrypoint.sh"]
     volumes:
       - .:/var/www/html
     command: php artisan queue:work --tries=3 --backoff=5
@@ -56,6 +63,7 @@ services:
       target: dev
     restart: unless-stopped
     env_file: .env
+    entrypoint: ["sh", "./docker/dev/entrypoint.sh"]
     volumes:
       - .:/var/www/html
     command: php artisan schedule:work
@@ -70,13 +78,19 @@ services:
     env_file: ./apps/web/.env
     volumes:
       - ./apps/web:/app
-      - /app/node_modules
-    command: pnpm dev --host 0.0.0.0 --port 5173
+      # Named (not anonymous) so Linux-built deps persist and `make install`
+      # (a one-off `run` container) writes into the SAME volume the dev server uses.
+      - web_node_modules:/app/node_modules
+    # `pnpm install` on every start syncs the named node_modules volume to
+    # package.json — so a newly added dep (e.g. a font) is always present and
+    # Vite never fails with "Failed to resolve import". Then start the dev server.
+    command: sh -c "pnpm install && pnpm dev --host 0.0.0.0 --port 5173"
     expose:
       - "5173"
 
   db:
-    image: postgres:16-alpine
+    # pgvector-enabled Postgres 16 (backend.md §12 — vector search + detectors).
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_DATABASE:-liberhack}
@@ -142,3 +156,4 @@ volumes:
   redis_data:
   caddy_data:
   caddy_config:
+  web_node_modules:

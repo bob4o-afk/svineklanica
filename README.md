@@ -1,4 +1,4 @@
-# LiberHack — Public Procurement Watchdog
+# СВИНЕКЛАНИЦА (Svineklanitsa Watchdog) — Public Procurement Watchdog
 
 Civic-tech, but punk: we ingest Bulgarian public-procurement data and automatically
 raise **red flags** (price discrepancies, rigged specs, serial winners, cancelled-after-award,
@@ -8,8 +8,8 @@ implausible scope, late payments, cloned docs) — each linked to its primary so
 > Read **`plan.txt`** to bootstrap it, and **`CLAUDE.md`** + **`.claude/rules/`** for the rules.
 
 ## Layout (leha-style monorepo)
-- **The Laravel API is the repo root** — its code lives in `app/` and `modules/<Domain>/`, config in `config/`. Built by the root `Dockerfile` → `liberhack/api` image.
-- **`apps/web/`** — the React + TypeScript + **MUI** (incl. MUI X) + **Tailwind** + Phosphor client. One mobile-first responsive **PWA** = both the web and the "mobile" experience (no separate native app). Built by `apps/web/Dockerfile` → `liberhack/web` image.
+- **The Laravel API is the repo root** — its code lives in `app/` and `modules/<Domain>/`, config in `config/`. Built by the root `Dockerfile` → `svineklanitsa/api` image.
+- **`apps/web/`** — the React + TypeScript + **MUI** (incl. MUI X) + **Tailwind** + Phosphor client. One mobile-first responsive **PWA** = both the web and the "mobile" experience (no separate native app). Built by `apps/web/Dockerfile` → `svineklanitsa/web` image.
 
 ## Stack
 - **Backend:** API-first Laravel 11, modular (controllers · DTOs · actions · services · repositories), queued jobs, Sanctum auth, **PostgreSQL + `pgvector` (vectorized DB)** + Redis.
@@ -29,7 +29,7 @@ See **`plan.txt`** for what you must set up externally (email provider, HTTPS, M
 ---
 
 ## The idea
-**corruption-fucker** — a website that **scrapes and publishes likely-corrupt activity** in Bulgaria, each claim linked to its primary source. **Public procurement is the flagship vertical** (the red-flag detectors), and the pipeline generalizes to other sources over time.
+**Свинекланица (Svineklanitsa Watchdog)** — a website that **scrapes and publishes likely-corrupt activity** in Bulgaria, each claim linked to its primary source. **Public procurement is the flagship vertical** (the red-flag detectors), and the pipeline generalizes to other sources over time.
 
 ## Three lanes, one job each (work in parallel)
 The team splits **by lane** so everyone owns their turf and nobody collides:

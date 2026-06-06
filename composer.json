@@ -1,16 +1,17 @@
 {
-    "name": "liberhack/api",
+    "name": "svineklanitsa/api",
     "type": "project",
-    "description": "LiberHack public-procurement watchdog API (modular Laravel).",
+    "description": "Свинекланица (Svineklanitsa Watchdog) public-procurement watchdog API (modular Laravel).",
     "license": "MIT",
     "require": {
         "php": "^8.3",
         "laravel/framework": "^11.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
+        "predis/predis": "^2.2",
+        "resend/resend-php": "^1.3",
         "spatie/laravel-data": "^4.0",
-        "spatie/laravel-typescript-transformer": "^2.4",
-        "predis/predis": "^2.2"
+        "spatie/laravel-typescript-transformer": "^2.4"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -48,6 +49,11 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "policy": {
+            "advisories": {
+                "block": false
+            }
         }
     },
     "minimum-stability": "stable",

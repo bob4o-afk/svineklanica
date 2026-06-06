@@ -3,8 +3,13 @@
 #  - APP_DOMAIN=your.domain -> Caddy auto-fetches a free Let's Encrypt cert
 #    (host must be publicly reachable on :80/:443 with DNS pointing here).
 #
-# Upstreams are parameterized so the same file works in dev (Vite on :5173)
-# and prod (nginx-served static bundle on :80). docker-compose sets these.
+# Upstreams are resolved DYNAMICALLY via Docker's embedded DNS (127.0.0.11) and
+# refreshed every 2s. This is what makes the rolling, zero-downtime deploy real:
+# when a new app/web container comes up (and the old one drains), Caddy re-resolves
+# the service name and load-balances across whatever is currently healthy — no
+# cached-IP 502s. Passive retries (lb_try_duration) cover the brief overlap.
+#
+# Host/port come from compose: dev defaults to Vite (web:5173); prod sets web:80.
 
 {$APP_DOMAIN:localhost} {
 	encode gzip
@@ -18,14 +23,34 @@
 		-Server
 	}
 
-	# API + auth + health -> Laravel
+	# API + auth + health -> Laravel (FrankenPHP in prod, artisan serve in dev)
 	@api path /api/* /sanctum/* /_health
 	handle @api {
-		reverse_proxy {$API_UPSTREAM:app:8000}
+		reverse_proxy {
+			dynamic a {
+				name {$API_UPSTREAM_HOST:app}
+				port {$API_UPSTREAM_PORT:8000}
+				refresh 2s
+				resolvers 127.0.0.11
+			}
+			lb_policy round_robin
+			lb_try_duration 10s
+			lb_try_interval 250ms
+		}
 	}
 
 	# everything else -> the React app (Vite dev server, or nginx in prod)
 	handle {
-		reverse_proxy {$WEB_UPSTREAM:web:5173}
+		reverse_proxy {
+			dynamic a {
+				name {$WEB_UPSTREAM_HOST:web}
+				port {$WEB_UPSTREAM_PORT:5173}
+				refresh 2s
+				resolvers 127.0.0.11
+			}
+			lb_policy round_robin
+			lb_try_duration 10s
+			lb_try_interval 250ms
+		}
 	}
 }

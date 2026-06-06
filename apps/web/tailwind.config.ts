@@ -17,11 +17,12 @@ const config: Config = {
         ink: '#0a0a0a', // near-black background
         bone: '#f4f1ea', // off-white text/surface
         alarm: '#ff2d2d', // danger / red flag
-        acid: '#c6ff00', // accent / highlight
+        acid: '#a8cc00', // accent / highlight — dimmed lime
         rust: '#b5651d', // warning
         muted: '#6b7280', // secondary text
       },
       fontFamily: {
+        display: ['"Manrope"', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
     },

@@ -55,7 +55,8 @@ Rules:
 
 ## 7. Public IDs externally ⭐
 
-- Anything exposed via the API gets a `public_id` (UUID) column; `getRouteKeyName()` returns `'public_id'`. **Never serialize the auto-increment `id`.** (Purely internal scratch tables are exempt.)
+- Anything exposed via the API gets a **`public_id`** column holding a **UUIDv7**, **generated explicitly in PHP** (`App\Support\PublicId\PublicIdGenerator` / the `HasPublicId` trait, leha convention) — **never** a DB-side default. `getRouteKeyName()` returns `'public_id'`. **Never serialize the auto-increment `id`.** The bigint `id` stays internal for fast FKs; FKs reference it, but it never crosses the API boundary. (Purely internal scratch/staging tables are exempt — e.g. `ingest_records`.)
+- UUIDv7 (not v4) so public ids are **time-ordered** — stable sort, index-friendly, leaks no more than a timestamp.
 
 ## 8. Logging — through one service ⭐
 
@@ -66,6 +67,13 @@ Rules:
 ## 9. Type sync with the frontend ⭐
 
 - Every DTO / Model / Resource / Enum reachable from a controller carries `#[TypeScript]`; generate TS types before wiring a new endpoint into a client. **Never hand-roll** a TS interface that mirrors a PHP shape.
+
+## 9.5 Enums ⭐ (leha convention)
+
+- **Always `int`-backed — never string values.** `declare(strict_types=1);`, `#[TypeScript]`, and implement `App\Shared\Contracts\HasLabel`.
+- **Each enum owns its own "thousands block"; cases step by 10** — e.g. `TenderStatus` lives in the `1000` block (`1000, 1010, 1020, …`), `FlagType` in the `2000` block, `FlagSeverity` in `3000`. The +10 gaps let new cases slot in between without renumbering or a data migration; the distinct blocks mean a raw int (e.g. `2020`) maps unambiguously to one enum case for debugging.
+- **`label(): string`** is a `match` over the cases returning explicit Bulgarian-first `__('enums.*')` keys (one key per case — don't string-concat the case name). The int is what's stored (integer column + Eloquent enum cast) and shipped to TS; the label is display-only.
+- Reachable-from-controller enums carry `#[TypeScript]` (§9).
 
 ## 10. i18n
 
@@ -88,3 +96,11 @@ Rules:
 
 - Pest, real Postgres (no DB mocking). A **smoke test per detector** on a small real fixture, a feature test per guarded endpoint (incl. an unauthorized-access test proving the guard works), and a test that a heavy operation **dispatches a job** rather than running inline.
 - These run in CI on every push (see devops.md).
+
+## 14. Posts & view counts (project-specific) ⭐
+
+- The citizen feed is a stream of **posts** — short, sourced write-ups of the latest corruption cases (each ties back to the flags/records behind it; every claim keeps its `source_url`, §11). Posts are public, read-only for citizens; only admins author them.
+- **View counts are tracked in Redis, deduped by IP** — one IP = one view (`+1`). On a read: if `post:{public_id}:ip:{ipHash}` doesn't exist, set it (with a TTL window, e.g. 24h) and atomically `INCR post:{public_id}:views`; if it exists, do nothing. **Never** hit Postgres per view.
+  - Hash/normalize the IP (don't store raw IPs as plaintext keys — privacy; security.md §9). Counting happens in cheap middleware / a fire-and-forget path, never blocking the response.
+  - A scheduled/queued **flusher** persists the Redis totals into a `posts.view_count` column so counts survive a Redis flush and are queryable. Redis is the hot counter; Postgres is the durable record.
+- Posts are **cached** (Redis cache store) and served from cache; the cache is busted on edit/new-post.

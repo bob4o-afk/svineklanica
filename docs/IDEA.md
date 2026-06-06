@@ -1,9 +1,22 @@
-# corruption-fucker — the idea (plain words)
+# СВИНЕКЛАНИЦА (Svineklanitsa Watchdog) — the idea (plain words)
 
 > A living doc for the team to review and mark up. The engineering rules live in `CLAUDE.md` + `.claude/rules/`; this file is just **what we're building and why**, in plain language. Edit freely.
+> **Name:** the project is now **Свинекланица** ("Свинекланица Watchdog") — that's what the email notifier, README and demo say.
 
 ## In one sentence
-A **website that automatically digs through public Bulgarian government data, finds the deals that smell like corruption, and publishes them in plain language — with a link to the proof behind every accusation.**
+A **website that automatically digs through public Bulgarian government data, finds the deals that smell like corruption, and publishes them on a map in plain language — with a link to the proof behind every accusation.**
+
+## How it's organized: Sphere → Category → Severity
+Everything hangs off a **three-level hierarchy** (the core model — `CLAUDE.md` §1.0):
+1. **Sphere (сфера)** — which part of the state: **съдебна система, здравеопазване, полиция** (demo focus; `образование` later).
+2. **Corruption category (категория)** — the mechanism: **обществена поръчка** and **нерегламентирани плащания** (two for now).
+3. **Severity** — a suspicion score shown as a band: **🟢 low / 🟡 medium / 🔴 high** (store the 0–100 %, show the band).
+
+On top of that, every published post gets **punk tags / badges** — `крадене на пари`, `кофти сделки`, `шуши-муши` — the savage plain-Bulgarian label for what it really is.
+
+## Two flagship views
+- **🗺️ A map (Mapbox)** of **where** the dodgy deals happen, filterable by sphere/category/severity — the "it's happening next to me" moment.
+- **📈 A price-over-time graph** built from snapshots (e.g. what a laptop cost across 2026) — when one tender sits far off the line, something's wrong.
 
 ## The problem
 Government spending in Bulgaria *is* technically public — but it's buried in clunky registries, PDFs, and databases nobody reads. So corruption hides in plain sight: it's "public," but invisible. A normal citizen has no realistic way to spot that the same company keeps winning rigged contracts, or that a road got "repaired" for an absurd price.

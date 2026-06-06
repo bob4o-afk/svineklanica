@@ -171,3 +171,27 @@ Routing: source id → payload category → heuristics → LLM `police_category_
   scraping is ToS-grey + CAPTCHA. Use EIK as the join key; curate owners if needed.
 - **Asset declarations** (`bulnao.government.bg`) — PDF/OCR + GDPR sensitivity.
 - **Court acts / State Gazette / lex.bg** — PDF-only / restrictive ToS.
+
+## Reference / aggregators (NOT primary sources for flags)
+
+For hero-case research and sanity-checks only — a flag must still cite a primary record, never one of these.
+
+| Source | URL | Use |
+|---|---|---|
+| **Данни за добро / Data for Good** — SEBRA visualization | `https://data-for-good.bg/posts/2022-01-20-sebra-visualization-bg/` | Prior art on SEBRA payment viz |
+| **Bivol / BIRD** | `https://bivol.bg` | Investigative leads on known cases |
+
+## Static map geometry (frontend asset, not a flag source)
+
+| File | Source | Pulled | Format | License / terms |
+|---|---|---|---|---|
+| `apps/web/public/geo/bg-provinces.geojson` | **Eurostat GISCO** — NUTS 2021, level 3, 1:10M (`NUTS_RG_10M_2021_4326_LEVL_3`), filtered to `CNTR_CODE=BG`, stripped to `NUTS_ID` + geometry | 2026-06-06 | GeoJSON · 28 oblasti, keyed by `properties.NUTS_ID` (`BG311`…`BG425`) | ✅ Free with attribution |
+
+> Attribution (required): **© EuroGeographics for the administrative boundaries. Source: Eurostat GISCO.** The map keys on NUTS3 codes; Bulgarian display names live in `apps/web/src/lib/regions.ts`.
+
+## Per-record provenance checklist (every ingested row)
+
+- [ ] `source` (which source) · `natural_key` (TED id / registry № / EIK / row hash)
+- [ ] `source_url` — a page/document a human can open · `fetched_at` (ISO-8601 UTC)
+- [ ] raw snapshot kept (re-parse without re-fetch) · `sphere` + `category` tagged where inferable
+- [ ] location (region/municipality, lat/lng) for the map where available

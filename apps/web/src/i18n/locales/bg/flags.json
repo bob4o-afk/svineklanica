@@ -1,0 +1,29 @@
+{
+  "type": {
+    "price_discrepancy": "Надценяване",
+    "tailored_spec": "Скроена поръчка",
+    "serial_winner": "Сериен победител",
+    "cancelled": "Прекратена след офертите",
+    "implausible_scope": "Невъзможен обхват",
+    "delayed_payment": "Забавено плащане",
+    "doc_clone": "Преписана документация"
+  },
+  "severity": {
+    "critical": "Критично",
+    "high": "Високо",
+    "medium": "Средно",
+    "low": "Ниско"
+  },
+  "card": {
+    "evidence": "Доказателства",
+    "source": "Източник",
+    "sources": "Източници",
+    "noSource": "Липсва източник",
+    "detectedAt": "Открито"
+  },
+  "subject": {
+    "authority": "Възложител",
+    "company": "Изпълнител",
+    "tender": "Поръчка"
+  }
+}

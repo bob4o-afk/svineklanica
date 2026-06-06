@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: ghcr.io/OWNER/liberhack-api:latest
+          image: ghcr.io/OWNER/svineklanitsa-api:latest
           command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
           envFrom:
             - configMapRef: { name: app-config }
