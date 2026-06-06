@@ -11,7 +11,7 @@ describe('AppSeo', () => {
       </HelmetProvider>,
     );
     await waitFor(() => expect(document.title).toContain('Сигнали'));
-    expect(document.title).toContain('CORRUPTION FUCKER');
+    expect(document.title).toContain('СВИНЕКЛАННИЦА');
   });
 
   it('emits a noindex robots meta when requested', async () => {

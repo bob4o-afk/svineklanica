@@ -1,9 +1,11 @@
-import { Card, CardActionArea, CardActions, CardContent, Stack, Typography } from '@mui/material';
+import { Box, Card, CardActionArea, CardActions, CardContent, Stack, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { formatDate } from '@/lib/date';
 import { flagTypeMeta } from '@/lib/flags';
 import { paths } from '@/routes/paths';
+import { fonts } from '@/theme/typography';
+import { palette } from '@/theme/tokens';
 import type { FlagPost, FlagSubject } from '@/types/api';
 import { AppEvidenceList } from './AppEvidenceList';
 import { AppFlagBadge } from './AppFlagBadge';
@@ -31,28 +33,50 @@ export function AppFlagPostCard({ flag }: AppFlagPostCardProps) {
   const primarySource = flag.sources[0];
 
   return (
-    <Card>
+    <Card className="punk-card">
+      {/* 2px alarm-red top border marks every card as a potential scandal */}
+      <Box sx={{ height: 2, bgcolor: palette.alarm, flexShrink: 0 }} />
       <CardActionArea component={RouterLink} to={paths.post(flag.public_id)}>
         <CardContent>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }} alignItems="center">
+            {/* Flag type label in JetBrains Mono — reads like a system log entry */}
+            <Typography
+              component="span"
+              sx={{
+                fontFamily: fonts.mono,
+                fontWeight: 700,
+                fontSize: '0.62rem',
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: palette.alarm,
+                mr: 0.5,
+              }}
+            >
+              {t(flagTypeMeta[flag.type].i18nKey)}
+            </Typography>
             <AppSeverityChip severity={flag.severity} />
             <AppFlagBadge type={flag.type} />
           </Stack>
-          <Typography variant="h6" component="h3" gutterBottom>
+          <Typography
+            variant="h6"
+            component="h3"
+            gutterBottom
+            sx={{ fontFamily: fonts.display, fontWeight: 800 }}
+          >
             {headline}
           </Typography>
           {subject !== '' ? (
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ fontFamily: fonts.mono, fontSize: '0.75rem', letterSpacing: '0.04em' }}>
               {subject}
             </Typography>
           ) : null}
-          <Typography variant="body2" sx={{ mb: 2 }}>
+          <Typography variant="body2" sx={{ mb: 2, lineHeight: 1.65 }}>
             {flag.explanation_bg}
           </Typography>
           <AppEvidenceList items={flag.evidence} max={2} />
         </CardContent>
       </CardActionArea>
-      <CardActions sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, px: 2, py: 1 }}>
+      <CardActions sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, px: 2, py: 1, borderTop: `1px solid ${palette.alarm}22` }}>
         {primarySource !== undefined ? (
           <AppSourceLink source={primarySource} />
         ) : (
@@ -60,7 +84,7 @@ export function AppFlagPostCard({ flag }: AppFlagPostCardProps) {
             {t('flags:card.noSource')}
           </Typography>
         )}
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: fonts.mono, letterSpacing: '0.06em' }}>
           {t('flags:card.detectedAt')}: {formatDate(flag.detected_at)}
         </Typography>
       </CardActions>
