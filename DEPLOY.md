@@ -63,16 +63,20 @@ Now `git tag v1.0.1 && git push --tags` → Actions builds, then SSHes in and do
 How the zero-downtime deploy works (release.yml `deploy` job):
 - The prod API image is **FrankenPHP** (`Dockerfile.prod`) — it serves requests
   concurrently and reloads gracefully, unlike `artisan serve`.
-- `app` and `web` have **healthchecks** (compose); the deploy uses the
-  **`docker rollout`** CLI plugin (auto-installed on first deploy) which starts a
+- `app` and `web` have **healthchecks** (compose); when available, the deploy uses
+  the **`docker rollout`** CLI plugin (auto-installed on first deploy) which starts a
   NEW container, waits for its healthcheck to pass, then drains the OLD one. Caddy
   resolves upstreams **dynamically** (root `Caddyfile`) and load-balances across the
-  overlap, so no request is dropped.
+  overlap, so no request is dropped. If the plugin can't be made available on the host
+  (e.g. docker runs via `sudo` with a different config dir), the deploy **falls back to
+  a plain `compose up -d` recreate** — a brief restart blip instead of a failed release.
 - Migrations run with the new image BEFORE the swap — **keep them backward-compatible**
   (expand/contract) so the old container keeps working during the overlap.
 - `db`/`redis`/`proxy` are never stopped; only the app/web containers roll.
 - Prereqs on the VM: `curl` (for the plugin install) + Docker Compose v2.24+
-  (for `COMPOSE_ENV_FILES`). `docker rollout` self-installs to `~/.docker/cli-plugins`.
+  (for `COMPOSE_ENV_FILES`). `docker rollout` self-installs to
+  `${DOCKER_CONFIG:-~/.docker}/cli-plugins` — the dir the host's `docker` actually
+  reads (so it's found even when docker is invoked via `sudo`).
 
 ==============================================================================
 MONITORING  (bring up next to the app)
