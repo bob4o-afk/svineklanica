@@ -45,13 +45,16 @@ export default defineConfig({
     prodCspPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
-      // We register the SW ourselves from app code (src/lib/pwa.ts) via the
-      // `virtual:pwa-register` module — that's what lets us add a periodic update
-      // check so open tabs auto-reload onto a fresh deploy. `false` stops the plugin
-      // from ALSO injecting its own registration (which would double-register). The
-      // registration code is bundled into the app's hashed JS, not an inline <script>,
-      // so the strict prod `script-src 'self'` CSP still holds.
+      // We register the SW ourselves from app code (src/lib/pwa.ts) — that's what lets us
+      // add a periodic update check so open tabs auto-reload onto a fresh deploy. `false`
+      // stops the plugin from ALSO injecting its own registration (which would
+      // double-register). The registration code is bundled into the app's hashed JS, not an
+      // inline <script>, so the strict prod `script-src 'self'` CSP still holds.
       injectRegister: false,
+      // Never build/serve the PWA service worker in dev — pwa.ts registers /sw.js
+      // unconditionally, so without this the SW would fight MSW's mock worker for control
+      // of the page and make /api/* requests fall through (404). PWA is a production concern.
+      devOptions: { enabled: false },
       includeAssets: ['favicon.svg', 'robots.txt'],
       manifest: {
         name: BRAND.name,

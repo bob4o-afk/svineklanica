@@ -9,6 +9,7 @@ import { palette } from '@/theme/tokens';
 import type { FlagPost, FlagSubject } from '@/types/api';
 import { AppEvidenceList } from './AppEvidenceList';
 import { AppFlagBadge } from './AppFlagBadge';
+import { AppSectorBadge } from './AppSectorBadge';
 import { AppSeverityChip } from './AppSeverityChip';
 import { AppSourceLink } from './AppSourceLink';
 
@@ -41,6 +42,7 @@ export function AppFlagPostCard({ flag }: AppFlagPostCardProps) {
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }} alignItems="center">
             <AppSeverityChip severity={flag.severity} />
             <AppFlagBadge type={flag.type} />
+            {flag.category !== undefined ? <AppSectorBadge sector={flag.category} /> : null}
           </Stack>
           <Typography
             variant="h6"

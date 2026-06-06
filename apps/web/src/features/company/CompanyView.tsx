@@ -1,5 +1,5 @@
 import { Chip, Stack, Typography } from '@mui/material';
-import { ArrowLeftIcon } from '@phosphor-icons/react';
+import { ArrowLeftIcon, GraphIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { AppButton } from '@/components/controls/AppButton';
@@ -60,6 +60,15 @@ export function CompanyView({ eik }: CompanyViewProps) {
       </Stack>
 
       <AppEntityStats stats={stats} />
+
+      <AppButton
+        variant="outlined"
+        to={paths.network(company.public_id)}
+        startIcon={<GraphIcon />}
+        sx={{ alignSelf: 'flex-start' }}
+      >
+        {t('viz:network.viewLink')}
+      </AppButton>
 
       <section>
         <Typography variant="h6" component="h2" gutterBottom>

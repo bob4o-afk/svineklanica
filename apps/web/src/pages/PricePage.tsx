@@ -1,8 +1,12 @@
-import { ComingSoonView } from '@/features/placeholder/ComingSoonView';
+import { useParams } from 'react-router-dom';
+import { PriceView } from '@/features/price/PriceView';
 import { useRenderLog } from '@/hooks/useRenderLog';
+import { NotFoundPage } from './NotFoundPage';
 
-/** Price-over-time chart stub — the viz lane lands in Phase 3. */
+/** Price-over-time chart for a product/category series key. */
 export function PricePage() {
   useRenderLog('PricePage');
-  return <ComingSoonView />;
+  const { seriesKey } = useParams();
+  if (seriesKey === undefined || seriesKey === '') return <NotFoundPage />;
+  return <PriceView seriesKey={seriesKey} />;
 }

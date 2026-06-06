@@ -1,8 +1,8 @@
-import { ComingSoonView } from '@/features/placeholder/ComingSoonView';
+import { MapView } from '@/features/map/MapView';
 import { useRenderLog } from '@/hooks/useRenderLog';
 
-/** Regional choropleth stub — the map viz lands in Phase 3. */
+/** Regional corruption choropleth. */
 export function MapPage() {
   useRenderLog('MapPage');
-  return <ComingSoonView />;
+  return <MapView />;
 }

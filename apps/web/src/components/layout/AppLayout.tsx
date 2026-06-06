@@ -1,17 +1,18 @@
 import { Box } from '@mui/material';
-import { Outlet } from 'react-router-dom';
-import { AppDemoBanner } from '@/components/feedback/AppDemoBanner';
+import { Outlet, ScrollRestoration } from 'react-router-dom';
 import { AppErrorBoundary } from '@/components/feedback/AppErrorBoundary';
 import { AppContainer } from './AppContainer';
 import { AppFooter } from './AppFooter';
 import { AppHeader } from './AppHeader';
 import { AppWatermark } from './AppWatermark';
 
-/** The shared frame for every route: demo banner, header, the routed page (guarded by an
+/** The shared frame for every route: header, the routed page (guarded by an
  *  error boundary), and the footer. Mobile-first column that fills the viewport height. */
 export function AppLayout() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100%', position: 'relative' }}>
+      {/* Scroll to top on every new navigation; restore position on back/forward. */}
+      <ScrollRestoration />
       <AppWatermark />
       {/* Center-column mask: solid bg panel matching the content container width so the
           watermark is naturally visible in the left/right margins. box-shadow softens the
@@ -32,7 +33,6 @@ export function AppLayout() {
           boxShadow: `0 0 80px 40px ${theme.palette.background.default}`,
         })}
       />
-      <AppDemoBanner />
       <AppHeader />
       <Box component="main" sx={{ flex: 1, width: '100%', position: 'relative', zIndex: 1 }}>
         <AppContainer sx={{ py: 4 }}>

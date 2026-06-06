@@ -1,5 +1,5 @@
 import { Box, Divider, Stack, Typography } from '@mui/material';
-import { ArrowRightIcon, EyeIcon, MagnifyingGlassIcon } from '@phosphor-icons/react';
+import { ArrowRightIcon, MagnifyingGlassIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -120,18 +120,8 @@ export function HomeView() {
 
       {/* ── CONTENT: visible on scroll ─────────────────────────────────────── */}
       <Stack spacing={8} sx={{ pb: 8 }}>
-        {/* Kicker + subtitle + stats + CTAs */}
+        {/* Headline + subtitle + stats + CTAs */}
         <Stack spacing={4}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <EyeIcon size={14} weight="bold" color={palette.alarm} />
-            <Typography
-              variant="overline"
-              sx={{ fontFamily: fonts.mono, letterSpacing: '0.14em', color: palette.alarm }}
-            >
-              {t('home:hero.kicker')}
-            </Typography>
-          </Stack>
-
           <Box>
             <Typography
               component="h2"

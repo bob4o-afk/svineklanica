@@ -1,19 +1,19 @@
-import { AppBar, Box, Fade, Menu, MenuItem, Stack, Toolbar, Typography, useScrollTrigger } from '@mui/material';
+import { AppBar, Box, Fade, Menu, MenuItem, Stack, Toolbar, useScrollTrigger } from '@mui/material';
 import { ListIcon, MagnifyingGlassIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { AppColorModeToggle } from '@/components/controls/AppColorModeToggle';
 import { AppIconButton } from '@/components/controls/AppIconButton';
 import { AppLink } from '@/components/controls/AppLink';
 import { BRAND } from '@/config/brand';
 import { paths } from '@/routes/paths';
 import { fonts } from '@/theme/typography';
-import { palette } from '@/theme/tokens';
 import { AppBrandmark } from './AppBrandmark';
 
 const NAV_ITEMS: ReadonlyArray<{ to: string; labelKey: string }> = [
   { to: paths.feed, labelKey: 'common:nav.feed' },
+  { to: paths.map, labelKey: 'common:nav.map' },
   { to: paths.about, labelKey: 'common:nav.about' },
 ];
 
@@ -23,54 +23,36 @@ const NAV_ITEMS: ReadonlyArray<{ to: string; labelKey: string }> = [
 export function AppHeader() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const menuOpen = anchorEl !== null;
   const closeMenu = () => setAnchorEl(null);
 
-  // Show the logo once the hero has scrolled off screen (~280px covers logo + name).
+  const isHome = pathname === paths.home;
+  // On the homepage the hero IS the branding, so the logo only appears once you scroll past it
+  // (~280px). On every other page the logo + name stay visible at all times.
   const scrolled = useScrollTrigger({ threshold: 280, disableHysteresis: true });
+  const logoVisible = !isHome || scrolled;
 
   return (
     <AppBar position="sticky">
       <Toolbar component="nav" sx={{ gap: 2 }}>
-        {/* Logo — invisible at the top, fades in on scroll. Always rendered so flex layout is stable. */}
+        {/* Logo — on the homepage it fades in once the hero scrolls off; on inner pages it is
+            always visible. Always rendered so the flex layout stays stable. */}
         <Box sx={{ mr: 'auto', display: 'flex', alignItems: 'center' }}>
-          <Fade in={scrolled} timeout={250}>
+          <Fade in={logoVisible} timeout={250}>
             <AppLink
               to={paths.home}
               color="inherit"
               underline="none"
               aria-label={BRAND.name}
-              tabIndex={scrolled ? 0 : -1}
-              aria-hidden={!scrolled}
+              tabIndex={logoVisible ? 0 : -1}
+              aria-hidden={!logoVisible}
             >
               <AppBrandmark height={36} />
             </AppLink>
           </Fade>
         </Box>
-
-        {/* Live indicator */}
-        <Stack
-          direction="row"
-          spacing={0.75}
-          alignItems="center"
-          sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }}
-        >
-          <Box className="punk-live-dot" aria-hidden />
-          <Typography
-            component="span"
-            sx={{
-              fontFamily: fonts.mono,
-              fontWeight: 600,
-              fontSize: '0.65rem',
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: palette.alarm,
-            }}
-          >
-            {t('common:live')}
-          </Typography>
-        </Stack>
 
         <Stack
           direction="row"
@@ -86,9 +68,9 @@ export function AppHeader() {
               underline="hover"
               sx={{
                 fontFamily: fonts.mono,
-                fontWeight: 600,
-                fontSize: '0.78rem',
-                letterSpacing: '0.08em',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                letterSpacing: '0.06em',
                 textTransform: 'uppercase',
               }}
             >

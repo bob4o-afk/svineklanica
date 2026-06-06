@@ -1,11 +1,18 @@
 import { http, HttpResponse } from 'msw';
-import type { FlagPost, FlagSeverity, FlagType, Paginated } from '@/types/api';
+import { regionName } from '@/lib/regions';
+import type {
+  FlagPost,
+  FlagSeverity,
+  FlagType,
+  Paginated,
+  ProcurementSector,
+  RegionAggregate,
+} from '@/types/api';
 import {
   approvedFlags,
   authorities,
   companies,
   priceSeriesByKey,
-  regionAggregates,
   serialWinnerGraphById,
   tenders,
 } from '../fixtures/data';
@@ -35,6 +42,7 @@ export const handlers = [
     const url = new URL(request.url);
     const sort = url.searchParams.get('sort');
     const types = url.searchParams.getAll('type') as FlagType[];
+    const categories = url.searchParams.getAll('category') as ProcurementSector[];
     const severities = url.searchParams.getAll('severity') as FlagSeverity[];
     const region = url.searchParams.get('region');
     const q = url.searchParams.get('q')?.toLowerCase() ?? '';
@@ -43,6 +51,8 @@ export const handlers = [
 
     let items = approvedFlags.slice();
     if (types.length > 0) items = items.filter((f) => types.includes(f.type));
+    if (categories.length > 0)
+      items = items.filter((f) => f.category !== undefined && categories.includes(f.category));
     if (severities.length > 0) items = items.filter((f) => severities.includes(f.severity));
     if (region) items = items.filter((f) => f.subject.authority?.region_code === region);
     if (q) {
@@ -91,12 +101,28 @@ export const handlers = [
   }),
 
   http.get('/api/graphs/serial-winner/:publicId', ({ params }) => {
-    const graph = serialWinnerGraphById[String(params.publicId)];
-    if (!graph) return new HttpResponse(null, { status: 404 });
+    // Unknown ids return an empty graph (friendly "no network" state) rather than a 404.
+    const graph = serialWinnerGraphById[String(params.publicId)] ?? { nodes: [], edges: [] };
     return HttpResponse.json(graph);
   }),
 
-  http.get('/api/regions/aggregate', () => HttpResponse.json(regionAggregates)),
+  http.get('/api/regions/aggregate', ({ request }) => {
+    const category = new URL(request.url).searchParams.get('category');
+    const counts = new Map<string, number>();
+    for (const flag of approvedFlags) {
+      const code = flag.subject.authority?.region_code;
+      if (code === undefined) continue;
+      if (category !== null && flag.category !== category) continue;
+      counts.set(code, (counts.get(code) ?? 0) + 1);
+    }
+    const aggregates: RegionAggregate[] = Array.from(counts, ([region_code, count]) => ({
+      region_code,
+      region_name: regionName(region_code),
+      metric: count,
+      flag_count: count,
+    }));
+    return HttpResponse.json(aggregates);
+  }),
 
   http.get('/api/search', ({ request }) => {
     const q = new URL(request.url).searchParams.get('q')?.toLowerCase() ?? '';

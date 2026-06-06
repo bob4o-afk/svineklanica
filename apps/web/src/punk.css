@@ -131,9 +131,4 @@ body::after {
   color: #f4f1ea;
 }
 
-/* ── SCROLLBAR ───────────────────────────────────────────────────────────────────
-   Minimal dark scrollbar — doesn't break the dark surface. */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #0a0a0a; }
-::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 0; }
-::-webkit-scrollbar-thumb:hover { background: #444; }
+/* Scrollbar styling lives in theme/GlobalStyles.tsx (theme-aware: light + dark). */
