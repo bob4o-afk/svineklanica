@@ -25,15 +25,4 @@ enum FlagSeverity: int implements HasLabel
             self::Critical => __('enums.flag_severity.critical'),
         };
     }
-
-    /** contract.ts FlagSeverity wire value. */
-    public function wire(): string
-    {
-        return match ($this) {
-            self::Low => 'low',
-            self::Medium => 'medium',
-            self::High => 'high',
-            self::Critical => 'critical',
-        };
-    }
 }

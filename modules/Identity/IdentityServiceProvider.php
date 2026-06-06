@@ -39,10 +39,6 @@ class IdentityServiceProvider extends ServiceProvider
             ->prefix('api')
             ->group(__DIR__.'/routes/api.php');
 
-        Route::middleware('api')
-            ->prefix('api')
-            ->group(__DIR__.'/routes/admin.php');
-
         $this->registerHoneypotRoutes();
 
         // A honeypot hit logs to the `security` channel asynchronously (the

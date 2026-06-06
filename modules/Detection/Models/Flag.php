@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
-use Modules\Detection\Enums\ApprovalStatus;
 use Modules\Detection\Enums\FlagSeverity;
 use Modules\Detection\Enums\FlagType;
 
@@ -26,19 +25,13 @@ final class Flag extends Model
     protected $fillable = [
         'type',
         'severity',
-        'status',
         'subject_type',
         'subject_id',
         'subject_label',
-        'title',
-        'category',
-        'series_key',
-        'tags',
         'explanation_bg',
         'source_urls',
         'evidence',
         'detected_at',
-        'published_at',
     ];
 
     protected function casts(): array
@@ -46,12 +39,9 @@ final class Flag extends Model
         return [
             'type' => FlagType::class,
             'severity' => FlagSeverity::class,
-            'status' => ApprovalStatus::class,
             'source_urls' => 'array',
             'evidence' => 'array',
-            'tags' => 'array',
             'detected_at' => 'datetime',
-            'published_at' => 'datetime',
         ];
     }
 

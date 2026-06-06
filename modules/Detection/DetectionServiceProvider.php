@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Detection;
 
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
-use Modules\Detection\Contracts\FlagRepository;
-use Modules\Detection\Repositories\EloquentFlagRepository;
 
 /**
  * Detection bounded context: the red-flag detectors (CLAUDE.md §1.1) and the
@@ -18,13 +15,11 @@ class DetectionServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(FlagRepository::class, EloquentFlagRepository::class);
+        //
     }
 
     public function boot(): void
     {
-        Route::middleware('api')
-            ->prefix('api')
-            ->group(__DIR__.'/routes/api.php');
+        //
     }
 }
