@@ -12,6 +12,8 @@ export function AppDemoBanner() {
     <Box
       role="note"
       sx={{
+        position: 'relative',
+        zIndex: 1,
         // alarm-red bar with near-black text -> ~5.7:1, clears WCAG AA. The "fake data" honesty
         // bar must be readable (CLAUDE.md §0).
         bgcolor: 'error.main',

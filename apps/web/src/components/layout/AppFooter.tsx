@@ -8,7 +8,7 @@ export function AppFooter() {
   const { t } = useTranslation();
 
   return (
-    <Box component="footer" sx={{ borderTop: 1, borderColor: 'divider', mt: 6, py: 3 }}>
+    <Box component="footer" sx={{ borderTop: 1, borderColor: 'divider', mt: 6, py: 3, bgcolor: 'background.default', position: 'relative', zIndex: 1 }}>
       <Stack spacing={1} alignItems="center" textAlign="center">
         <Typography variant="caption" color="text.secondary">
           {t('common:footer.sources')}
