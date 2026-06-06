@@ -1,10 +1,11 @@
 import { logger } from '@/lib/logger';
 
-// How often an already-open tab re-checks the server for a newer service worker.
+// Fallback poll for an idle, focused tab that never fires a visibility/focus event
+// (kept short so even a left-open dashboard lands on a fresh deploy within seconds).
+// The real-time path is event-driven (checkForUpdate below) — this is just a safety net.
 // The `no-cache` header on `sw.js` (nginx.conf) makes each check actually hit the
-// server instead of a stale cached worker, so a long-lived session notices a fresh
-// deploy within this window rather than only on a manual refresh.
-const UPDATE_CHECK_INTERVAL_MS = 60_000;
+// server instead of a stale cached worker, so the check sees a fresh deploy.
+const UPDATE_CHECK_INTERVAL_MS = 20_000;
 
 /** Register the PWA service worker and keep open tabs current with the latest deploy.
  *  Lives in the app bundle (not an inline <script>), so the strict prod CSP
@@ -19,10 +20,27 @@ export function registerServiceWorker(): void {
     .then((registration) => {
       logger.info('sw_registered', { scope: registration.scope });
 
-      // Poll for a newer build while the tab stays open.
-      window.setInterval(() => {
+      // Ask the browser to fetch /sw.js and compare it to the active worker. If a new
+      // deploy is live, this is what discovers it (then the updatefound path below
+      // activates + reloads). Cheap + safe to call often — a no-op when nothing changed.
+      const checkForUpdate = (): void => {
         void registration.update();
-      }, UPDATE_CHECK_INTERVAL_MS);
+      };
+
+      // Instant on deploy: re-check the moment the user is actually looking at the tab
+      // (open it, alt-tab back, refocus the window) or reconnects — not just on a timer.
+      // This is what turns a normal reload / tab-refocus into a fresh version with no
+      // hard refresh. `load` covers a returning visitor whose cached SW served the page.
+      checkForUpdate();
+      window.addEventListener('load', checkForUpdate);
+      window.addEventListener('focus', checkForUpdate);
+      window.addEventListener('online', checkForUpdate);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') checkForUpdate();
+      });
+
+      // Safety-net poll for a tab that stays open and focused without firing the events above.
+      window.setInterval(checkForUpdate, UPDATE_CHECK_INTERVAL_MS);
 
       // The SW is built with skipWaiting + clientsClaim (registerType: 'autoUpdate'),
       // so a new build activates and takes control on its own. When that happens to a
