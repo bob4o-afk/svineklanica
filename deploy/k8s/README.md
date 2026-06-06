@@ -20,8 +20,8 @@ One `Deployment`/`Service` per app component, mirroring the compose services:
 ```bash
 # 1) point the images at your registry + tag
 cd deploy/k8s
-kustomize edit set image ghcr.io/OWNER/liberhack-api=ghcr.io/<you>/liberhack-api:v1.0.0
-kustomize edit set image ghcr.io/OWNER/liberhack-web=ghcr.io/<you>/liberhack-web:v1.0.0
+kustomize edit set image ghcr.io/OWNER/svineklanitsa-api=ghcr.io/<you>/svineklanitsa-api:v1.0.0
+kustomize edit set image ghcr.io/OWNER/svineklanitsa-web=ghcr.io/<you>/svineklanitsa-web:v1.0.0
 
 # 2) create real secrets OUT OF BAND (never commit them)
 kubectl -n liberhack create secret generic app-secrets \

@@ -44,8 +44,8 @@ jobs:
           target: prod
           push: true
           tags: |
-            ghcr.io/${{ env.OWNER_LC }}/liberhack-api:${{ github.ref_name }}
-            ghcr.io/${{ env.OWNER_LC }}/liberhack-api:latest
+            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-api:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-api:latest
 
       - name: Build & push Web image
         uses: docker/build-push-action@v6
@@ -56,8 +56,8 @@ jobs:
           build-args: |
             VITE_MUI_X_LICENSE_KEY=${{ secrets.VITE_MUI_X_LICENSE_KEY }}
           tags: |
-            ghcr.io/${{ env.OWNER_LC }}/liberhack-web:${{ github.ref_name }}
-            ghcr.io/${{ env.OWNER_LC }}/liberhack-web:latest
+            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-web:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-web:latest
 
   deploy:
     name: Deploy to VM (enable with repo variable DEPLOY_ENABLED=true)
@@ -149,11 +149,11 @@ jobs:
           server_port: ${{ secrets.MAIL_PORT }}
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          from: LiberHack Watchdog <${{ steps.from.outputs.addr }}>
+          from: Свинекланица Watchdog <${{ steps.from.outputs.addr }}>
           to: ${{ secrets.RELEASE_NOTIFY_TO }}
-          subject: "LiberHack Watchdog — release ${{ github.ref_name }} STARTED ⏳"
+          subject: "Свинекланица Watchdog — release ${{ github.ref_name }} STARTED ⏳"
           body: |
-            A release of LiberHack Watchdog has started.
+            A release of Свинекланица Watchdog has started.
 
             Version: ${{ github.ref_name }}
             Commit:  ${{ github.sha }}
@@ -203,11 +203,11 @@ jobs:
           server_port: ${{ secrets.MAIL_PORT }}
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          from: LiberHack Watchdog <${{ steps.from.outputs.addr }}>
+          from: Свинекланица Watchdog <${{ steps.from.outputs.addr }}>
           to: ${{ secrets.RELEASE_NOTIFY_TO }}
-          subject: "LiberHack Watchdog — released ${{ github.ref_name }} ✅"
+          subject: "Свинекланица Watchdog — released ${{ github.ref_name }} ✅"
           body: |
-            A new version of LiberHack Watchdog has shipped successfully.
+            A new version of Свинекланица Watchdog has shipped successfully.
 
             Version: ${{ github.ref_name }}
             Commit:  ${{ github.sha }}
@@ -254,11 +254,11 @@ jobs:
           server_port: ${{ secrets.MAIL_PORT }}
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          from: LiberHack Watchdog <${{ steps.from.outputs.addr }}>
+          from: Свинекланица Watchdog <${{ steps.from.outputs.addr }}>
           to: ${{ secrets.RELEASE_NOTIFY_TO }}
-          subject: "LiberHack Watchdog — release ${{ github.ref_name }} FAILED ❌"
+          subject: "Свинекланица Watchdog — release ${{ github.ref_name }} FAILED ❌"
           body: |
-            A release of LiberHack Watchdog FAILED.
+            A release of Свинекланица Watchdog FAILED.
 
             Version:       ${{ github.ref_name }}
             Failed stage:  ${{ steps.which.outputs.stage }}

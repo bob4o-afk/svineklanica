@@ -13,9 +13,9 @@ resources:
   - 40-ingress.yaml
 
 # Override image owner/tag in one place instead of editing every manifest:
-#   kustomize edit set image ghcr.io/OWNER/liberhack-api=ghcr.io/me/liberhack-api:v1.2.3
+#   kustomize edit set image ghcr.io/OWNER/svineklanitsa-api=ghcr.io/me/svineklanitsa-api:v1.2.3
 images:
-  - name: ghcr.io/OWNER/liberhack-api
+  - name: ghcr.io/OWNER/svineklanitsa-api
     newTag: latest
-  - name: ghcr.io/OWNER/liberhack-web
+  - name: ghcr.io/OWNER/svineklanitsa-web
     newTag: latest

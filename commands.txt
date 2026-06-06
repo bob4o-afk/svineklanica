@@ -1,5 +1,5 @@
 ================================================================================
- LiberHack — command cheat sheet  (run all from the repo root)
+ Свинекланица — command cheat sheet  (run all from the repo root)
 ================================================================================
 Everything runs in Docker (devops.md). The Laravel API is the repo root; the
 React client is in apps/web. Convenience targets live in the Makefile (`make ...`).
@@ -108,10 +108,10 @@ docker compose exec app php artisan mail:test you@example.com
  PROD IMAGE  (FrankenPHP — Dockerfile.prod; built by CI, but you can test locally)
 --------------------------------------------------------------------------------
 # Build the prod API image locally
-docker build -f Dockerfile.prod --target prod -t liberhack-api:prodtest .
+docker build -f Dockerfile.prod --target prod -t svineklanitsa-api:prodtest .
 
 # Smoke-test it on the dev network (serves Laravel public/ on :8000; needs db+redis up)
-docker run -d --name frankentest --network liberhack_default --env-file .env liberhack-api:prodtest
+docker run -d --name frankentest --network liberhack_default --env-file .env svineklanitsa-api:prodtest
 docker exec frankentest wget -qO- http://127.0.0.1:8000/_health    # expect "Application up"
 docker rm -f frankentest
 

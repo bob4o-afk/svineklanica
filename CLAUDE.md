@@ -34,12 +34,34 @@ What that means for every decision in this repo:
 
 ---
 
-## 1. THE PROJECT — Public Procurement Watchdog
+## 1. THE PROJECT — СВИНЕКЛАНИЦА / Svineklanitsa Watchdog
 
-**Codename:** _ТЪРГ / OPS_ (final name TBD).
-**One-liner (the roast):** _"Обществените поръчки са публични. Прозрачни — не. Ние правим намаляваме разликата — и показваме кой се надява, че няма да гледаш."_
+**Codename / name:** **СВИНЕКЛАНИЦА** ("Свинекланица Watchdog"). _(This is now the public/pitch name — the email notifier, README and demo all say **Свинекланица Watchdog**, NOT "LiberHack Watchdog".)_
+**One-liner (the roast):** _"Обществените поръчки са публични. Прозрачни — не. Ние намаляваме разликата — и показваме кой се надява, че няма да гледаш."_
 
-Bulgarian public procurement (обществени поръчки) is technically public — the data sits in registries nobody reads. We **ingest it, normalize it, and automatically raise red flags** a citizen or journalist would never spot by hand. Then we make it **clickable, graphable, and embarrassing.**
+Bulgarian public spending (обществени поръчки, плащания) is technically public — the data sits in registries nobody reads. We **ingest it, normalize it, and automatically raise red flags** a citizen or journalist would never spot by hand. Then we make it **clickable, mappable, graphable, and embarrassing.**
+
+### 1.0 How it's organized — Sphere → Category → Flag severity ⭐ (the core model)
+
+Everything in the product hangs off this **three-level hierarchy**. It's how the user browses, filters, and how a flag is described:
+
+1. **Sphere (сфера)** — the part of the state where the rot lives. **Demo focus: `съдебна система` (judiciary), `здравеопазване` (healthcare), `полиция` (police).** A sphere is the top-level filter and the thing the map colours by.
+2. **Corruption category (категория корупция)** — _the mechanism_ of abuse inside a sphere. **For now exactly two:** `обществена поръчка` (public procurement) and `нерегламентирани плащания` (unregulated / off-the-books payments). More categories slot in later (e.g. `конкурси за работа` — see §1.4).
+3. **Flag severity (% as low / medium / high)** — every flagged record carries a computed **suspicion score** rendered as a band: **🟢 low / 🟡 medium / 🔴 high** (store the underlying 0–100 %; show the band + the %). The detectors (§1.1) are what compute this score; the band is what the citizen sees.
+
+> Read it as a sentence: _"In **здравеопазване**, under **обществена поръчка**, this tender is **🔴 high (87%)** suspicious — here's why, here's the source."_
+> **Backend mapping:** `Sphere` and `CorruptionCategory` are **int-backed enums** (leha convention, backend.md §9.5 — own thousands-block, +10 steps, Bulgarian `label()`). A `Flag` carries `sphere`, `category`, and `severity` (the band) + `score` (the %).
+
+### 1.0.1 Post tags / badges — the punk layer ⭐ ("шуши-муши")
+
+Spheres/categories are the _serious_ taxonomy. On top, **every published post gets one or more punk tags** — short, savage, plain-Bulgarian labels that say what it _really_ is. These are display badges (`AppFlagBadge` / `AppTag`), separate from the formal category:
+
+- **`крадене на пари`** (stealing money)
+- **`кофти сделки`** (dodgy deals)
+- **`шуши-муши`** (shady/under-the-table — the catch-all "something stinks" badge)
+- _(extend the list as cases demand — keep them punchy, factual, never libellous)_
+
+Tags are assigned when a post is published (admin-authored, backend.md §14). They're a curated editorial layer **on top of** the computed sphere/category/severity — the badge is the roast, the category is the evidence. Tag values live in i18n (Bulgarian-first), rendered through `AppFlagBadge`.
 
 ### 1.1 The red-flag detectors (this IS the product)
 
@@ -57,10 +79,12 @@ Each detector turns a real pattern of abuse into a visible, sourced signal. Prio
 
 ### 1.2 What the user sees (UX — 20% of score, must be citizen-usable)
 
-- **Search / browse** procurements (by authority, contractor, CPV category, value, region).
-- **Entity pages:** a contracting authority, a contractor/company — with their flag history.
-- **Flag feed:** "what's suspicious right now," sortable, each card explains _why_ in plain Bulgarian + the source link.
-- **Price graph** for a product/category over time (the snapshot story).
+- **Filter by Sphere → Category → Severity** (§1.0) — the primary navigation. Every list/feed is filterable by all three.
+- **🗺️ THE MAP (Mapbox) — flagship feature.** A map of Bulgaria showing **where** the suspicious deals actually happen, **filterable by sphere / category / severity**. Markers/clusters coloured by sphere, sized/coloured by severity; click a point → the records there. This is the "holy shit, it's happening next to me" moment of the demo. **Mapbox GL** (token in `VITE_MAPBOX_TOKEN`); pins come from each record's region/municipality/coords (geocode authority address or municipality at ingest). See `.claude/rules/frontend.md`.
+- **📈 Price-over-time graph with snapshots — flagship feature.** For a product/category, a line of price over time built from **point-in-time snapshots** (e.g. "what did a laptop cost across 2026"). When one tender sits far above/below the line → that's the signal. Each snapshot stores `(item, tender, price, captured_at, source_url)` so the curve is real, not reconstructed (data-sources.md §2).
+- **Search / browse** records (by authority, contractor, CPV category, value, region, **sphere/category**).
+- **Entity pages:** a contracting authority, a contractor/company — with their flag history + their points on the map.
+- **Flag / post feed:** "what's suspicious right now," sortable, each card shows its **sphere · category · severity band + punk tags** (§1.0.1) and explains _why_ in plain Bulgarian + the source link.
 - **The graph view** of winner↔authority relationships for serial-winner cases.
 - Built so a **non-technical citizen or journalist** can use it. Plain language, not jargon.
 
@@ -70,6 +94,18 @@ Each detector turns a real pattern of abuse into a visible, sourced signal. Prio
 - **Radical critical thinking 30%** → we bite **rigging/corruption mechanics**, not "transparency is nice." Each detector targets a real abuse pattern.
 - **System design & UX 20%** → a citizen can find a scandal in 2 clicks.
 - **Presentation & Roast 20%** → live demo pulls up a **real, named, embarrassing** Bulgarian case and lets the data do the roasting.
+
+### 1.4 Idea backlog — rigged job competitions (РУО / education) 🧠
+
+A future **corruption category** (and a strong candidate sphere = `образование`): **нагласени конкурси за работа.** In education, posts are advertised through the **РУО** (Регионално управление на образованието) — and **its archive** is the goldmine. The tell is an advert engineered for one pre-chosen person:
+
+- **Absurdly short application deadline** (опит to stop anyone else applying in time).
+- **Reference to чл. 67** (specific hiring article) combined with…
+- **Hyper-specific required qualification** + oddly **specific personal characteristics** — written to match exactly one CV.
+
+> ⚖️ **Nuance, not a witch-hunt:** sometimes a narrow spec is legitimate. The flag fires on the **combination**: `short deadline + чл. 67 + ultra-specific qualification + narrow characteristics`. We surface the pattern with the source advert; we don't convict (mirrors the "rigged specs" detector §1.1.2, applied to hiring). Scrape **public РУО archives only** (data-sources.md discipline).
+
+_Not in the first demo cut unless time allows — but the model (§1.0) already fits it: new sphere `образование`, new category `конкурси за работа`, same severity bands + map + tags._
 
 ---
 
@@ -124,11 +160,45 @@ Each detector turns a real pattern of abuse into a visible, sourced signal. Prio
 
 ---
 
+## 6. TODO — the new direction (Свинекланица) ☑️
+
+Concrete work items from the latest direction change. Tick as shipped.
+
+**Core model (§1.0) — do first, everything hangs off it:**
+- [ ] `Sphere` enum (int-backed, leha block) — `съдебна система`, `здравеопазване`, `полиция` (+`образование` later).
+- [ ] `CorruptionCategory` enum — `обществена поръчка`, `нерегламентирани плащания` (start with these two).
+- [ ] `FlagSeverity` band — 🟢 low / 🟡 medium / 🔴 high — backed by a stored `score` (0–100 %). Detectors compute `score`; band is derived.
+- [ ] Add `sphere`, `category`, `score`, `severity` to the `Flag` schema + migration; `#[TypeScript]` sync.
+- [ ] Filter API: list flags/posts by sphere + category + severity (guarded, rate-limited).
+
+**Punk tags / badges (§1.0.1):**
+- [ ] Post tags: `крадене на пари`, `кофти сделки`, `шуши-муши` (extensible). Admin assigns on publish.
+- [ ] `AppFlagBadge` / `AppTag` component renders sphere · category · severity · punk tags; values via i18n.
+
+**🗺️ Map (Mapbox) — flagship:**
+- [ ] Frontend `AppMap` (Mapbox GL, `VITE_MAPBOX_TOKEN`) — markers/clusters coloured by sphere, by severity.
+- [ ] Filterable by sphere / category / severity; click marker → records there.
+- [ ] Ingest: geocode authority/municipality → lat/lng (or municipality centroid) so records have coords.
+
+**📈 Price-over-time graph — flagship:**
+- [ ] Snapshot store `(item, tender, price, captured_at, source_url)` + ingest writes snapshots.
+- [ ] `AppPriceChart` (MUI X chart) — price line per product/category; highlight the outlier tender.
+
+**Naming:**
+- [x] Email notifier renamed **LiberHack Watchdog → Свинекланица Watchdog** (`.github/workflows/release.yml`).
+- [x] GHCR image names `liberhack-api/-web` → `svineklanitsa-api/-web` (release.yml, prod compose, k8s, commands.txt, package.json) + README/commands.txt titles. _(DB name `liberhack`/`liberhack_test` and the k8s namespace are intentionally unchanged.)_
+
+**Data sources:** verified, URL-by-URL list (mapped to Sphere → Category) is in [`SOURCES.md`](SOURCES.md). Demo-first source = **TED** (no-auth bulk); payments via **СЕБРА**; companies via **Търговски регистър** (EIK).
+
+**Backlog (§1.4):** РУО rigged-job-competitions category (`образование` sphere) — design later.
+
+---
+
 ## LAST. PROJECT STATUS (fill in on site)
 
 > Update the moment the challenge is announced and details lock.
 
-- **Codename / final name:** _TBD_
+- **Codename / final name:** **Свинекланица / Svineklanitsa Watchdog**
 - **Chosen направление / challenge:** _TBD (announced 5 Jun)_
 - **Detectors shipped for demo (from §1.1):** _TBD — pick 2–3 strong ones first_
 - **Real data source(s) wired in:** _TBD (see `.claude/rules/data-sources.md`)_

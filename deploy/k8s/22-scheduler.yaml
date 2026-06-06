@@ -15,7 +15,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: scheduler
-              image: ghcr.io/OWNER/liberhack-api:latest
+              image: ghcr.io/OWNER/svineklanitsa-api:latest
               command: ["php", "artisan", "schedule:run"]
               envFrom:
                 - configMapRef: { name: app-config }
