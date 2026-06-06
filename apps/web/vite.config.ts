@@ -1,27 +1,64 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
+import { BRAND } from './src/config/brand';
+import { palette } from './src/theme/tokens';
+
+// The production CSP — strict: no `'unsafe-inline'` on script-src and no `ws:` (those are dev-only
+// Vite needs). 'unsafe-inline' stays on style-src because Emotion injects <style> at runtime.
+// The <meta> in index.html carries the looser DEV policy; this swaps in the tight one at build.
+// Real HTTP headers (incl. frame-ancestors + HSTS) land in Caddy/nginx in Phase 5.
+const PROD_CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  'upgrade-insecure-requests',
+].join('; ');
+
+function prodCspPlugin(): Plugin {
+  return {
+    name: 'cf-prod-csp',
+    apply: 'build',
+    transformIndexHtml(html) {
+      return html.replace(
+        /(http-equiv="Content-Security-Policy"\s+content=")[^"]*(")/,
+        `$1${PROD_CSP}$2`,
+      );
+    },
+  };
+}
 
 // "Mobile" = this same app as an installable, mobile-first PWA. (frontend.md §0)
 export default defineConfig({
   plugins: [
     react(),
+    prodCspPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      // External registration script (no inline <script>) so the strict prod script-src 'self' holds.
+      injectRegister: 'script',
+      includeAssets: ['favicon.svg', 'robots.txt'],
       manifest: {
-        name: 'LiberHack Watchdog',
-        short_name: 'Watchdog',
-        description: 'Public-procurement watchdog — civic tech, but punk.',
-        theme_color: '#0a0a0a',
-        background_color: '#0a0a0a',
+        name: BRAND.name,
+        short_name: BRAND.short,
+        description: 'Обществените поръчки на показ — граждански инструмент срещу корупцията.',
+        lang: 'bg',
+        theme_color: palette.ink,
+        background_color: palette.ink,
         display: 'standalone',
         start_url: '/',
-        icons: [
-          { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
-        ],
+        // SVG icon scales to every size; PNG/maskable set is a Phase-5 polish.
+        icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
       },
     }),
   ],
