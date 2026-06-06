@@ -1,0 +1,26 @@
+{
+  "totalNoticeCount": 2,
+  "notices": [
+    {
+      "publication-number": "123456-2024",
+      "notice-title": {"bul": "Доставка на медицинско оборудване", "eng": "Supply of medical equipment"},
+      "buyer-name": {"bul": "УМБАЛ Бургас"},
+      "buyer-country": ["BGR"],
+      "notice-type": ["cn-standard"],
+      "publication-date": ["2024-03-15Z"],
+      "total-value": ["2500000"],
+      "classification-cpv": ["33100000"],
+      "links": {"self": "https://ted.europa.eu/en/notice/-/detail/123456-2024"}
+    },
+    {
+      "publication-number": "654321-2024",
+      "notice-title": {"bul": "Строителство на пречиствателна станция"},
+      "buyer-name": {"bul": "Община Варна"},
+      "buyer-country": ["BGR"],
+      "notice-type": ["cn-standard"],
+      "publication-date": ["2024-04-01Z"],
+      "total-value": ["18000000"],
+      "classification-cpv": ["45252100"]
+    }
+  ]
+}

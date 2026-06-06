@@ -15,9 +15,15 @@ dependencies = [
 [project.optional-dependencies]
 # Only when a source is JS-rendered. Install with: uv sync --extra browser
 browser = ["playwright>=1.44"]
+# Semantic-search embeddings (default, lightweight ONNX). uv sync --extra embed
+embed = ["fastembed>=0.4", "numpy>=1.26"]
+# Heavier alternative embedding backend. uv sync --extra embed-st
+embed-st = ["sentence-transformers>=3.0", "numpy>=1.26"]
 
 [project.scripts]
 scrape = "scraper.run:main"
+embed = "scraper.embed:main"
+search = "scraper.search:main"
 
 [dependency-groups]
 dev = ["ruff>=0.5", "pytest>=8.2"]
@@ -32,3 +38,9 @@ packages = ["src/scraper"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "network: hits a live upstream source; skipped unless --run-network is passed",
+]

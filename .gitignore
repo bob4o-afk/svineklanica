@@ -60,8 +60,21 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
+# AI corruption-detector layer (apps/ai, Python)
+/apps/ai/.venv/
+
 # Scraper ingest output — heavy/generated. Keep the committed demo samples + .gitkeep.
 /storage/ingest/raw/*
 !/storage/ingest/raw/.gitkeep
 /storage/ingest/normalized/*
 !/storage/ingest/normalized/.gitkeep
+# Embedding sidecars — heavy vectors; keep only the committed demo sample.
+/storage/ingest/embeddings/*
+!/storage/ingest/embeddings/.gitkeep
+# AI verdict sidecars — generated; keep only the committed demo samples.
+/storage/ingest/verdicts/*
+!/storage/ingest/verdicts/.gitkeep
+# On-disk fetch cache + downloaded embedding models — never commit.
+/storage/ingest/.cache/
+/apps/scraper/.fastembed_cache/
+**/local_cache/

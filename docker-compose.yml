@@ -135,6 +135,22 @@ services:
       - ./apps/scraper:/app
       - ./storage/ingest:/data/ingest
 
+  # Python AI corruption-detector (apps/ai). On-demand only (profile "ai").
+  # Reads the scraper's normalized NDJSON, scores corruption risk with LangChain
+  # + Gemini, and writes a verdict sidecar into ./storage/ingest/verdicts that
+  # Laravel ingests. Build context is ./apps so the editable procurement-scraper
+  # path dependency (../scraper) resolves. Trigger an analysis with:
+  #   docker compose run --rm ai uv run analyze --source ted
+  ai:
+    build:
+      context: ./apps
+      dockerfile: ai/Dockerfile
+    profiles: ["ai"]
+    env_file: ./apps/ai/.env
+    volumes:
+      - ./apps:/app
+      - ./storage/ingest:/data/ingest
+
 volumes:
   pg_data:
   redis_data:
