@@ -16,6 +16,65 @@
 - Config comes from **env** at runtime, never hardcoded. Ship a `.env.example`.
 - `make`/compose targets: `up`, `down`, `build`, `test`, `migrate`, `seed` — one command each.
 
+## 1.1 Local dev = `https://localhost` via Caddy ⭐
+
+**The one canonical local URL is `https://localhost`. Everyone uses it. Don't develop against `http://localhost:5173` unless you've deliberately opted into direct mode (last section below).** Using the canonical URL is what gives us a real secure context (so the PWA service worker, MSW, and `wss` HMR all behave exactly like prod) and what makes the `/api` proxy, security headers, and TLS match what ships.
+
+### What Caddy is (and why)
+
+**Caddy** is the `proxy` service in `docker-compose.yml` (`caddy:2-alpine`). It's a reverse proxy that sits in front of everything on ports **80/443** and:
+- **Terminates TLS** — with `APP_DOMAIN=localhost` it mints a **locally-trusted internal certificate** from its own built-in CA, so you get real `https://` in dev. (With a real `APP_DOMAIN` in prod it auto-fetches a free Let's Encrypt cert instead — same config, see `Caddyfile` + DEPLOY.md.)
+- **Routes by path** (`Caddyfile`): `/api/*`, `/sanctum/*`, `/_health` → the Laravel `app` container (`:8000`); **everything else** → the Vite `web` dev server (`:5173`). So the browser only ever talks to `:443`; Caddy fans out behind it.
+- **Sets the security headers** (HSTS, `X-Content-Type-Options`, `X-Frame-Options`, …) from `security.md §8`, so dev mirrors prod.
+
+This is why you never point the browser at `:8000` or `:5173` directly — Caddy is the single front door for both the API and the app.
+
+### First-time setup (once per machine)
+
+```bash
+# 1. Env files (root = Laravel + compose vars; web = Vite vars)
+cp .env.example .env
+cp apps/web/.env.example apps/web/.env
+
+# 2. Build images, start the stack, install deps, migrate (+ seed)
+make build && make up && make install && make migrate && make seed
+
+# 3. TRUST CADDY'S LOCAL ROOT CA  — the step everyone forgets.
+#    Without it the browser shows a cert warning (NET::ERR_CERT_AUTHORITY_INVALID)
+#    and the PWA/secure-context features silently misbehave.
+#    Caddy generates the CA inside its data volume on first run; copy it out:
+docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt ./caddy-local-root.crt
+```
+
+Then import `caddy-local-root.crt` into the OS **trusted root** store:
+
+- **Windows (PowerShell, run as Administrator):**
+  ```powershell
+  Import-Certificate -FilePath .\caddy-local-root.crt -CertStoreLocation Cert:\CurrentUser\Root
+  ```
+  (or double-click the `.crt` → *Install Certificate* → *Current User* → *Place all certificates in the following store* → **Trusted Root Certification Authorities**.)
+- **macOS:** `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./caddy-local-root.crt`
+- **Linux:** copy to `/usr/local/share/ca-certificates/` and run `sudo update-ca-certificates`.
+
+**Restart the browser** after importing, then open **`https://localhost`**. No warning = trust worked. (Captured dev emails: Mailpit at `http://localhost:8025`.)
+
+### HMR must match the entry point ⭐
+
+The two HMR modes are **mutually exclusive — pick one per running dev server** (`apps/web/vite.config.ts server.hmr`, toggled by the `VITE_HMR_DIRECT` env on the `web` service in `docker-compose.yml`):
+
+| You browse | `VITE_HMR_DIRECT` | HMR connects to |
+|---|---|---|
+| **`https://localhost`** (canonical — the default) | **`"false"`** | `wss://localhost:443` (through Caddy) ✅ |
+| `http://localhost:5173` (direct Vite, opt-in) | `"true"` | `ws://localhost:5173` |
+
+**The repo default is `"false"` — leave it.** If you set it to `"true"` *and* browse `https://localhost`, the HMR client tries to reach `localhost:5173`, the https page forces TLS onto that plaintext port, and you get **`GET https://localhost:5173/ net::ERR_SSL_PROTOCOL_ERROR`**. After changing the var, recreate the container: `docker compose up -d web`.
+
+### Quick troubleshooting
+
+- **`ERR_SSL_PROTOCOL_ERROR` on `localhost:5173`** → HMR mode mismatch. Set `VITE_HMR_DIRECT="false"` and `docker compose up -d web` (see table above).
+- **Cert warning / `ERR_CERT_AUTHORITY_INVALID`** → the trust step wasn't done (or the `caddy_data` volume was recreated, minting a new CA — re-export and re-import).
+- **`/api/*` 404 or won't load** → you're hitting Vite directly, or a stale PWA service worker is controlling the page. Use `https://localhost`; hard-reload (Ctrl+Shift+R) to drop a stale SW.
+
 ## 2. GitHub Actions — tests on every push ⭐
 
 Workflow `.github/workflows/ci.yml`, triggered on **push** and **pull_request**:

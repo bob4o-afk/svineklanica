@@ -30,6 +30,10 @@ final class Flag extends Model
         'category',
         'score',
         'severity',
+        'title',
+        'series_key',
+        'sector',
+        'region_code',
         'subject_type',
         'subject_id',
         'subject_label',
@@ -37,6 +41,7 @@ final class Flag extends Model
         'source_urls',
         'evidence',
         'detected_at',
+        'view_count',
     ];
 
     protected function casts(): array
@@ -50,6 +55,7 @@ final class Flag extends Model
             'source_urls' => 'array',
             'evidence' => 'array',
             'detected_at' => 'datetime',
+            'view_count' => 'integer',
         ];
     }
 

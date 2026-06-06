@@ -10,6 +10,7 @@ export const queryKeys = {
   serialWinnerGraph: (publicId: string) => ['serial-winner-graph', publicId] as const,
   regionAggregate: (metric: string) => ['region-aggregate', metric] as const,
   search: (q: string) => ['search', q] as const,
+  stats: () => ['stats'] as const,
   me: () => ['me'] as const,
   pendingFlags: () => ['admin', 'pending-flags'] as const,
   sources: () => ['admin', 'sources'] as const,

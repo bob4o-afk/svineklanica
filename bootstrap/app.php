@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\SecurityHeaders;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -20,6 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/_health',
     )
+    ->withSchedule(function (Schedule $schedule): void {
+        // Fold the hot Redis view-deltas into the durable flags.view_count column
+        // every minute (backend.md §14). The `scheduler` compose service runs this.
+        $schedule->command('flags:flush-views')->everyMinute()->withoutOverlapping();
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         // Behind Caddy (prod) the app sits behind a TLS-terminating proxy; honor
         // X-Forwarded-* so URLs are https and Secure cookies are set (devops.md §6).

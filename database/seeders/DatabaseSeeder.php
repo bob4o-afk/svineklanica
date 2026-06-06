@@ -13,5 +13,12 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AdminUserSeeder::class,
         ]);
+
+        // The demo dataset that powers the citizen-facing API — never in production.
+        if (! app()->environment('production')) {
+            $this->call([
+                DemoSeeder::class,
+            ]);
+        }
     }
 }

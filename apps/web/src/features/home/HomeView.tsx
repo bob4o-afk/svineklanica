@@ -3,18 +3,16 @@ import { ArrowRightIcon, MagnifyingGlassIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { AppBrandLockup } from '@/components/brand/AppBrandLockup';
 import { AppButton } from '@/components/controls/AppButton';
 import { AppLink } from '@/components/controls/AppLink';
 import { AppSearchInput } from '@/components/controls/AppSearchInput';
 import { FeedList } from '@/features/feed/FeedList';
-import { useColorMode } from '@/hooks/useColorMode';
+import { useStats } from '@/hooks/queries/useStats';
+import { EMPTY_CELL, formatNumber } from '@/lib/format';
 import { paths } from '@/routes/paths';
 import { fonts } from '@/theme/typography';
 import { palette } from '@/theme/tokens';
-import { BRAND } from '@/config/brand';
-
-import blackFullRed from '@/assets/logos/black_full_red.svg';
-import whiteFullRed from '@/assets/logos/white_full_red.svg';
 
 function StatCounter({ value, label }: { value: string; label: string }) {
   return (
@@ -52,10 +50,8 @@ export function HomeView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState('');
-  const { mode } = useColorMode();
-  const isDark = mode === 'dark';
-  const fullLogoSrc = isDark ? whiteFullRed : blackFullRed;
-  const [first, second] = BRAND.nameParts;
+  const stats = useStats();
+  const stat = stats.data;
 
   return (
     <Stack spacing={0}>
@@ -75,47 +71,7 @@ export function HomeView() {
           gap: 3,
         }}
       >
-        <Box
-          component="img"
-          src={fullLogoSrc}
-          alt={BRAND.name}
-          sx={{
-            width: { xs: 180, sm: 240, md: 300 },
-            height: 'auto',
-            display: 'block',
-          }}
-        />
-
-        <Typography
-          component="h1"
-          sx={{
-            fontFamily: fonts.display,
-            fontWeight: 800,
-            fontSize: { xs: '2.75rem', sm: '4rem', md: '5.5rem' },
-            lineHeight: 1,
-            letterSpacing: '-0.03em',
-            textTransform: 'uppercase',
-            userSelect: 'none',
-          }}
-        >
-          {first}
-          <Box component="span" sx={{ color: palette.alarm }}>
-            {second}
-          </Box>
-        </Typography>
-
-        <Typography
-          sx={{
-            fontFamily: fonts.mono,
-            fontWeight: 600,
-            fontSize: { xs: '0.7rem', sm: '0.8rem' },
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-            color: 'text.secondary',
-          }}
-        >
-          {BRAND.tagline}
-        </Typography>
+        <AppBrandLockup size="hero" nameComponent="h1" />
       </Box>
 
       {/* ── CONTENT: visible on scroll ─────────────────────────────────────── */}
@@ -160,9 +116,9 @@ export function HomeView() {
           </Typography>
 
           <Stack direction="row" spacing={4} flexWrap="wrap" useFlexGap>
-            <StatCounter value="3 249" label={t('home:stats.tenders')} />
-            <StatCounter value="847" label={t('home:stats.flags')} />
-            <StatCounter value="12" label={t('home:stats.detectors')} />
+            <StatCounter value={stat ? formatNumber(stat.tenders) : EMPTY_CELL} label={t('home:stats.tenders')} />
+            <StatCounter value={stat ? formatNumber(stat.flags) : EMPTY_CELL} label={t('home:stats.flags')} />
+            <StatCounter value={stat ? formatNumber(stat.detectors) : EMPTY_CELL} label={t('home:stats.detectors')} />
           </Stack>
 
           <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>

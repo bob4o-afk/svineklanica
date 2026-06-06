@@ -9,7 +9,7 @@ use Modules\Publishing\Http\Controllers\PublicPostController;
 // Loaded by PublishingServiceProvider under the 'api' middleware + '/api' prefix.
 
 // Public corruption feed — read-only, no auth, still rate-limited (security.md §2).
-Route::middleware('throttle:120,1')->group(function (): void {
+Route::middleware('throttle:public')->group(function (): void {
     Route::get('/posts', [PublicPostController::class, 'index'])->name('posts.index');
     Route::get('/posts/{post}', [PublicPostController::class, 'show'])->name('posts.show');
 });

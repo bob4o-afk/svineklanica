@@ -76,6 +76,11 @@ services:
       target: dev
     restart: unless-stopped
     env_file: ./apps/web/.env
+    environment:
+      # HMR over https://localhost via Caddy (wss on :443) → matches the canonical dev URL.
+      # Flip to "true" only if you browse the direct http://localhost:5173 entry instead.
+      # (One entry at a time — the two HMR modes are mutually exclusive.)
+      VITE_HMR_DIRECT: "false"
     volumes:
       - ./apps/web:/app
       # Named (not anonymous) so Linux-built deps persist and `make install`
@@ -87,6 +92,14 @@ services:
     command: sh -c "pnpm install && pnpm dev --host 0.0.0.0 --port 5173"
     expose:
       - "5173"
+    # Canonical dev URL is https://localhost (the Caddy proxy). Trust Caddy's local root
+    # CA once (caddy-local-root.crt → Windows user "Root" store) and it becomes a trusted
+    # secure context: MSW + the PWA service worker register and HMR runs over wss through
+    # Caddy (see apps/web/vite.config.ts `server.hmr`).
+    # 5173 is still published for direct http://localhost:5173 dev — also a secure context —
+    # but native HMR there needs VITE_HMR_DIRECT=true on this service (one entry per server).
+    ports:
+      - "5173:5173"
 
   db:
     # pgvector-enabled Postgres 16 (backend.md §12 — vector search + detectors).

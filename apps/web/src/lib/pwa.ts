@@ -46,3 +46,23 @@ export function registerServiceWorker(): void {
       });
     });
 }
+
+/** Tear down any service worker left over from a previous session (or a prod build
+ *  opened on the same origin). A stale SW keeps controlling the page and intercepts
+ *  every request — including MSW's /mockServiceWorker.js and /api/* — returning 404.
+ *  Dev-only cleanup; if one was still controlling this page, reload once so the page
+ *  comes up uncontrolled. */
+export async function unregisterServiceWorkers(): Promise<void> {
+  if (!('serviceWorker' in navigator)) return;
+
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  if (registrations.length === 0) return;
+
+  await Promise.all(registrations.map((registration) => registration.unregister()));
+  logger.info('sw_unregistered_stale', { count: registrations.length });
+
+  // The old worker still owns this client until the page reloads.
+  if (navigator.serviceWorker.controller !== null) {
+    window.location.reload();
+  }
+}

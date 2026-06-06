@@ -6,6 +6,7 @@ use App\Providers\AppServiceProvider;
 use Modules\Detection\DetectionServiceProvider;
 use Modules\Identity\IdentityServiceProvider;
 use Modules\Notifications\NotificationsServiceProvider;
+use Modules\Presentation\PresentationServiceProvider;
 use Modules\Procurement\ProcurementServiceProvider;
 use Modules\Publishing\PublishingServiceProvider;
 
@@ -16,4 +17,5 @@ return [
     IdentityServiceProvider::class,
     PublishingServiceProvider::class,
     NotificationsServiceProvider::class,
+    PresentationServiceProvider::class,
 ];

@@ -41,6 +41,10 @@ name: string;
 email: string;
 isAdmin: boolean;
 };
+export type WhitelistEntryData = {
+value: string;
+source: string;
+};
 }
 declare namespace Modules.Notifications.Data {
 export type BroadcastData = {

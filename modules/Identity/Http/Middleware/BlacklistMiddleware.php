@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Cookie;
 use Modules\Identity\Security\Blacklist\BlacklistService;
 use Modules\Identity\Security\Fingerprint\RequestFingerprint;
+use Modules\Identity\Security\Whitelist\WhitelistService;
 use Symfony\Component\HttpFoundation\Cookie as SymfonyCookie;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -36,8 +37,10 @@ final class BlacklistMiddleware
 {
     private readonly LoggingService $log;
 
-    public function __construct(private readonly BlacklistService $blacklist)
-    {
+    public function __construct(
+        private readonly BlacklistService $blacklist,
+        private readonly WhitelistService $whitelist,
+    ) {
         $this->log = new LoggingService('security');
     }
 
@@ -51,20 +54,29 @@ final class BlacklistMiddleware
         // freshly-minted cookie isn't reflected by $request->cookie() yet.
         $signals = ['device' => $deviceId] + RequestFingerprint::signals($request);
 
-        if ($this->blacklist->anyBlocked($signals)) {
-            abort(403, __('security.blacklisted'));
-        }
+        // Trusted IP → skip the whole abuse perimeter (security.md §4). A
+        // whitelisted operator is never banned, scanner-flagged, or tarpitted
+        // (and named limiters drop their rate cap too). We still issue the device
+        // cookie below for consistency, but run no gate. Whitelist beats blacklist
+        // by design: an explicitly-trusted address overrides any prior auto-ban.
+        $whitelisted = $this->whitelist->isWhitelisted($request->ip() ?? '');
 
-        if ($signature = $this->matchedScannerSignature($request)) {
-            $this->blacklist->blockSignals($signals, 'scanner:'.$signature);
-            $this->log->warning('scanner.signature', [
-                'signature' => $signature,
-                'path' => $request->path(),
-            ]);
-            abort(403, __('security.blacklisted'));
-        }
+        if (! $whitelisted) {
+            if ($this->blacklist->anyBlocked($signals)) {
+                abort(403, __('security.blacklisted'));
+            }
 
-        $this->trackForTarpit($request, $signals);
+            if ($signature = $this->matchedScannerSignature($request)) {
+                $this->blacklist->blockSignals($signals, 'scanner:'.$signature);
+                $this->log->warning('scanner.signature', [
+                    'signature' => $signature,
+                    'path' => $request->path(),
+                ]);
+                abort(403, __('security.blacklisted'));
+            }
+
+            $this->trackForTarpit($request, $signals);
+        }
 
         $response = $next($request);
 

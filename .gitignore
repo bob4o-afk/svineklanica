@@ -29,6 +29,9 @@ node_modules/
 # Docker / Caddy
 caddy_data/
 caddy_config/
+# Caddy's local-dev root CA — generated per machine, trusted into the OS store
+# once locally; never a shared artifact (see docker-compose.yml `web` notes).
+*.crt
 
 # Local scratch / working notes (not a deliverable)
 /todo/

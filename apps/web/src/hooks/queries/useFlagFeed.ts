@@ -11,7 +11,6 @@ async function fetchFeed(query: FlagFeedQuery, page: number): Promise<Paginated<
   params.set('per_page', String(query.per_page ?? PER_PAGE));
   if (query.sort) params.set('sort', query.sort);
   if (query.region) params.set('region', query.region);
-  if (query.cpv) params.set('cpv', query.cpv);
   if (query.q) params.set('q', query.q);
   for (const type of query.type ?? []) params.append('type', type);
   for (const category of query.category ?? []) params.append('category', category);

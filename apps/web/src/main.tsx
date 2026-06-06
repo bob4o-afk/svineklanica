@@ -3,8 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { env } from '@/config/env';
-import { logger } from '@/lib/logger';
-import { registerServiceWorker } from '@/lib/pwa';
+import { registerServiceWorker, unregisterServiceWorkers } from '@/lib/pwa';
 import { AppProviders } from '@/providers/AppProviders';
 import { router } from '@/routes/router';
 import './index.css';
@@ -12,14 +11,6 @@ import './index.css';
 // MUI X Premium key (optional — Community components work without it; a watermark shows if absent).
 if (env.muiLicenseKey !== '') {
   LicenseInfo.setLicenseKey(env.muiLicenseKey);
-}
-
-/** Start the MSW worker before mounting so the very first request is already intercepted.
- *  Dynamically imported so the mock layer is code-split out of production builds. */
-async function enableMocks(): Promise<void> {
-  if (!env.enableMocks) return;
-  const { worker } = await import('@/mocks/browser');
-  await worker.start({ onUnhandledRequest: 'bypass' });
 }
 
 function mount(): void {
@@ -34,13 +25,21 @@ function mount(): void {
   );
 }
 
-enableMocks()
-  .catch((error: unknown) => {
-    logger.error('mock_worker_failed', {
-      message: error instanceof Error ? error.message : String(error),
-    });
-  })
-  .finally(() => {
-    mount();
+async function bootstrap(): Promise<void> {
+  // Dev: evict any service worker from a previous session — a stale SW would intercept
+  // /api/* and 404 them. The app talks to the real backend (via the Vite /api proxy in
+  // dev, or Caddy), so there is no mock layer to start. (May reload once if one was
+  // still controlling the page.)
+  if (import.meta.env.DEV) {
+    await unregisterServiceWorkers();
+  }
+
+  mount();
+
+  // PWA is a production-only concern (frontend.md §0) — never register a SW in dev.
+  if (import.meta.env.PROD) {
     registerServiceWorker();
-  });
+  }
+}
+
+void bootstrap();

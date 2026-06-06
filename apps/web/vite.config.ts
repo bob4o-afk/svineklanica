@@ -1,5 +1,8 @@
-import { defineConfig, type Plugin } from 'vite';
-import react from '@vitejs/plugin-react';
+// defineConfig from vitest/config (a superset of vite's) so the `test` block below
+// type-checks; the Vite plugin/config types are otherwise identical.
+import { defineConfig } from 'vitest/config';
+import type { Plugin } from 'vite';
+  import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
 import { BRAND } from './src/config/brand';
@@ -76,6 +79,25 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // Direct http://localhost:5173 access now talks to the REAL backend (the mock layer is
+    // gone). Caddy already routes /api → app for the canonical https://localhost URL; this
+    // proxy gives the same reach when hitting Vite directly. Target is the app service on the
+    // compose network (override with VITE_API_PROXY for non-Docker dev).
+    proxy: {
+      '/api': { target: process.env.VITE_API_PROXY ?? 'http://app:8000', changeOrigin: true },
+      '/sanctum': { target: process.env.VITE_API_PROXY ?? 'http://app:8000', changeOrigin: true },
+      '/_health': { target: process.env.VITE_API_PROXY ?? 'http://app:8000', changeOrigin: true },
+    },
+    // The canonical dev URL is https://localhost (the Caddy TLS proxy). The HMR websocket
+    // must therefore go back through Caddy on :443 as wss — otherwise the client tries
+    // wss://localhost:5173 (plain HTTP, no TLS) and HMR silently dies, leaving the page
+    // feeling broken/stale. Caddy's reverse_proxy upgrades the ws transparently.
+    // Set VITE_HMR_DIRECT=true to instead get native HMR for direct http://localhost:5173
+    // access (in that mode https HMR won't connect — pick one entry point per dev server).
+    hmr:
+      process.env.VITE_HMR_DIRECT === 'true'
+        ? { host: 'localhost', port: 5173 }
+        : { protocol: 'wss', host: 'localhost', clientPort: 443 },
   },
   test: {
     globals: true,

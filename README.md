@@ -22,7 +22,7 @@ cp apps/web/.env.example apps/web/.env
 # then follow plan.txt step 1 to generate the framework skeletons
 make build && make up && make install && make migrate
 ```
-App via the proxy at `https://localhost`. Mailpit (captured emails) at `http://localhost:8025`.
+App via the proxy at `https://localhost` (the **one** canonical dev URL — not `:5173`). To get a clean padlock instead of a cert warning you must **trust Caddy's local root CA once** — full step-by-step (and what Caddy is / why `https://localhost`) in **`.claude/rules/devops.md §1.1`**. Mailpit (captured emails) at `http://localhost:8025`.
 
 See **`plan.txt`** for what you must set up externally (email provider, HTTPS, MUI X license) and where to get it.
 

@@ -1,5 +1,5 @@
 import { Chip, Divider, Stack, Typography } from '@mui/material';
-import { ArrowLeftIcon, ChartLineIcon, GraphIcon } from '@phosphor-icons/react';
+import { ArrowLeftIcon, ChartLineIcon, EyeIcon, GraphIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { AppButton } from '@/components/controls/AppButton';
@@ -14,6 +14,7 @@ import { AppSourceLink } from '@/components/flags/AppSourceLink';
 import { AppTldr } from '@/components/flags/AppTldr';
 import { useFlagPost } from '@/hooks/queries/useFlagPost';
 import { formatDate } from '@/lib/date';
+import { formatNumber } from '@/lib/format';
 import { flagTypeMeta, makeTldr } from '@/lib/flags';
 import { paths } from '@/routes/paths';
 
@@ -143,9 +144,21 @@ export function PostView({ publicId }: PostViewProps) {
         </Stack>
       </section>
 
-      <Typography variant="caption" color="text.secondary">
-        {t('flags:card.detectedAt')}: {formatDate(flag.detected_at)}
-      </Typography>
+      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ color: 'text.secondary' }}>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          alignItems="center"
+          aria-label={t('flags:card.views')}
+          title={t('flags:card.views')}
+        >
+          <EyeIcon size={16} />
+          <Typography variant="caption">{formatNumber(flag.view_count ?? 0)}</Typography>
+        </Stack>
+        <Typography variant="caption">
+          {t('flags:card.detectedAt')}: {formatDate(flag.detected_at)}
+        </Typography>
+      </Stack>
     </Stack>
   );
 }

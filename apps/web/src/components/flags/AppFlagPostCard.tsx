@@ -1,7 +1,9 @@
 import { Box, Card, CardActionArea, CardActions, CardContent, Stack, Typography } from '@mui/material';
+import { EyeIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { formatDate } from '@/lib/date';
+import { formatNumber } from '@/lib/format';
 import { flagTypeMeta } from '@/lib/flags';
 import { paths } from '@/routes/paths';
 import { fonts } from '@/theme/typography';
@@ -71,9 +73,23 @@ export function AppFlagPostCard({ flag }: AppFlagPostCardProps) {
             {t('flags:card.noSource')}
           </Typography>
         )}
-        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: fonts.mono, letterSpacing: '0.06em' }}>
-          {t('flags:card.detectedAt')}: {formatDate(flag.detected_at)}
-        </Typography>
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ color: 'text.secondary' }}>
+          <Stack
+            direction="row"
+            spacing={0.5}
+            alignItems="center"
+            aria-label={t('flags:card.views')}
+            title={t('flags:card.views')}
+          >
+            <EyeIcon size={14} />
+            <Typography variant="caption" sx={{ fontFamily: fonts.mono, letterSpacing: '0.06em' }}>
+              {formatNumber(flag.view_count ?? 0)}
+            </Typography>
+          </Stack>
+          <Typography variant="caption" sx={{ fontFamily: fonts.mono, letterSpacing: '0.06em' }}>
+            {t('flags:card.detectedAt')}: {formatDate(flag.detected_at)}
+          </Typography>
+        </Stack>
       </CardActions>
     </Card>
   );

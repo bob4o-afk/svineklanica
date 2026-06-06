@@ -9,7 +9,7 @@ use Modules\Notifications\Http\Controllers\SubscriptionController;
 // Loaded by NotificationsServiceProvider under the 'api' middleware + '/api' prefix.
 
 // Public opt-in / one-click unsubscribe — tightly rate-limited (security.md §2).
-Route::middleware('throttle:5,1')->group(function (): void {
+Route::middleware('throttle:contact')->group(function (): void {
     Route::post('/subscribe', [SubscriptionController::class, 'subscribe'])->name('subscribe');
     Route::get('/unsubscribe/{token}', [SubscriptionController::class, 'unsubscribe'])->name('unsubscribe');
 });

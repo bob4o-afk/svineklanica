@@ -14,6 +14,20 @@ return [
         'ttl' => (int) env('BLACKLIST_TTL', 86400),
     ],
 
+    // IP allow-list (security.md §4). A whitelisted caller bypasses EVERY abuse
+    // guard — the blacklist gate, scanner-signature auto-ban, the tarpit, and the
+    // per-route rate limits — so trusted operators (our VM, an office IP, a
+    // demo machine) are never collateral of the perimeter defences. Two sources,
+    // unioned: this env list (comma-separated IPs or CIDR ranges, immutable at
+    // runtime) and entries added live by an admin (Redis-backed, see
+    // WhitelistService). Entries are matched as exact IPs or CIDR ranges (v4/v6).
+    'whitelist' => [
+        'ips' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('SECURITY_IP_WHITELIST', '')),
+        ))),
+    ],
+
     // Tarpit: after this many requests from one ip inside the window, the caller
     // is auto-blacklisted (a scanner spraying URLs). The threshold must sit WELL
     // above real usage — a citizen opening the app fires several API calls per

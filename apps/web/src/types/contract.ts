@@ -90,6 +90,8 @@ export interface FlagPost {
   published_at?: string;
   /** Present on price_discrepancy flags — links to the product's price-over-time series. */
   series_key?: string;
+  /** Total views (Redis hot counter + durable column), deduped per IP. */
+  view_count?: number;
 }
 
 export interface Paginated<T> {
@@ -104,7 +106,6 @@ export interface FlagFeedQuery {
   category?: ProcurementSector[];
   severity?: FlagSeverity[];
   region?: string;
-  cpv?: string;
   q?: string;
   sort?: FlagSort;
   page?: number;
@@ -181,6 +182,13 @@ export interface SearchResults {
   authorities: AuthorityRef[];
   companies: CompanyRef[];
   tenders: TenderRef[];
+}
+
+/** Home-hero headline counters — real totals from the API, not hardcoded. */
+export interface PlatformStats {
+  tenders: number;
+  flags: number;
+  detectors: number;
 }
 
 export type AdminRole = 'admin' | 'reviewer';
