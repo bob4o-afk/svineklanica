@@ -31,11 +31,23 @@ if that port is busy — read the line Vite prints).
 - [ ] Click a shaded province → grows, map fades, lands on `/feed?region=…` with that region's feed (e.g. Плевен → `BG314`).
 - [ ] The sector filter chips at the top re-shade the map.
 
-## D. Dependency / security decisions (YOU decide — I left them as-is on purpose)
-- [ ] **`vitest` critical advisory `GHSA-5xrq-8626-4rwp` (CVSS 9.8) — currently ignored.** It's in `package.json → pnpm.auditConfig.ignoreGhsas`. **Why it's fine for the demo:** vitest is a dev/test dependency, *not* shipped in the production bundle, so it's not a runtime exposure. The fix is `vitest 2.1.9 → 4.1.0` — a **major** bump that could break the 54-test suite the day before the demo. **Decision:** keep ignored for the demo; schedule the vitest 4 upgrade for after. _(If you want, I can attempt the upgrade on a throwaway branch and report whether the suite survives.)_
-- [ ] **2 moderate dev-server advisories** (`esbuild` GHSA-67mh-4wv8-2f99, `vite` path-traversal GHSA-4w7w-66w2-5vf9). Only exploitable while `pnpm dev` is running *and* a malicious site is open in the same browser — irrelevant to the built/deployed demo. Clearing them needs a **vite 5 → 6 major** bump (risk to the PWA plugin + build). **Decision:** defer; not a production risk.
-- [ ] **License still undecided (GPL-3.0 vs MIT)** — `LICENSE` is GPL-3.0 but `CLAUDE.md §2.5` flags this as an open team decision. OSS license is **mandatory before the demo** (hackathon rule). Pick one and make the `CLAUDE.md` line match `LICENSE`.
+## C2. PWA install (Phase 5) — best on a real phone / a `pnpm build && pnpm preview`
+> The PWA service worker is **disabled in `dev`** (it fights MSW) — to truly test install, run
+> `corepack pnpm -C apps/web build && corepack pnpm -C apps/web preview` and open the preview URL.
+- [ ] **Desktop Chrome/Edge:** an install icon appears in the address bar → install → it opens in its own window with the eye logo, name „СВИНЕКЛАННИЦА".
+- [ ] **Android Chrome:** „Add to Home screen" / install banner; the home-screen icon is the **maskable** eye (fills the adaptive shape, not letterboxed).
+- [ ] **iOS Safari:** an in-app hint banner „Инсталирай Свинекланица" with the Share glyph appears automatically (iOS has no native prompt); following it — Share ▸ Add to Home Screen → the home icon is the eye (apple-touch-icon), opens fullscreen.
+- [ ] **In-app banner:** on an install-eligible browser a bottom banel „Инсталирай Свинекланица" shows with an „Инсталирай" button + „×" dismiss; dismiss hides it and it doesn't nag again (localStorage). Verified both light/dark already.
+- [ ] Icons regenerate cleanly if the logo changes: `corepack pnpm -C apps/web gen:icons` (uses the `sharp` devDep) → updates `public/pwa-*.png` + `apple-touch-icon-180x180.png`.
 
+## C3. Sentry error monitoring (Phase 5) — off by default, decision to enable
+- [ ] It's a **no-op unless `VITE_SENTRY_DSN` is set at _build_ time** (Vite bakes VITE_* at build). With no DSN, `@sentry/react` is **fully tree-shaken out** (0 bytes) — confirmed in the build.
+- [ ] **To enable:** set `VITE_SENTRY_DSN=<dsn>` before `pnpm build`, AND add the Sentry ingest host (e.g. `https://*.ingest.sentry.io`) to the prod CSP **`connect-src`** (in `vite.config.ts` `PROD_CSP` + the Caddy/nginx headers) — otherwise the browser blocks the report. **Decision:** enable only if you want live error capture for the demo; otherwise leave off.
+- [ ] Every `logger.error` (incl. the React error boundary) forwards to Sentry once enabled.
+
+## D. Dependency / security — RESOLVED this session ✅
+- [x] **License = GPL-3.0 (DECIDED).** `LICENSE` (GPLv3) + `apps/web/package.json` (`GPL-3.0-or-later`) + README §License + `CLAUDE.md` aligned. ⚠️ The **root `composer.json`** (backend lane — untouched) should get its `license` field set to match when backend is next worked on.
+- [x] **All 3 dependency advisories FIXED (validated on a throwaway worktree first).** Upgraded **`vitest 2.1.9 → 4.1.8`** (clears the critical `GHSA-5xrq-8626-4rwp`, CVSS 9.8) and **`vite 5.4.21 → 8.0.16`** + `@vitejs/plugin-react 6` + `vite-plugin-pwa 1.3.0` (clears the 2 moderate esbuild/vite advisories). **`pnpm audit` now reports „No known vulnerabilities found" (exit 0)** with NO ignores — the `pnpm.auditConfig.ignoreGhsas` entry was removed. All gates green: typecheck · lint · **60 vitest** · build · dev+MSW (vite 8 uses Rolldown → build ~2.4s). _Verify on your machine after pulling: `corepack pnpm -C apps/web install` then `… audit` → should be clean._
 ## E. Things only you can do (agent is blocked on these)
 - [ ] **Commit + push Session 5.** `git push` is gated for the agent. When ready:
       `git add -A && git commit -m "fix(web): flagship-viz QA fixes + hygiene"` then `! git push origin frontend-viz:main`.
