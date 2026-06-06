@@ -1,11 +1,18 @@
 import { http, HttpResponse } from 'msw';
-import type { FlagPost, FlagSeverity, FlagType, Paginated, ProcurementSector } from '@/types/api';
+import { regionName } from '@/lib/regions';
+import type {
+  FlagPost,
+  FlagSeverity,
+  FlagType,
+  Paginated,
+  ProcurementSector,
+  RegionAggregate,
+} from '@/types/api';
 import {
   approvedFlags,
   authorities,
   companies,
   priceSeriesByKey,
-  regionAggregates,
   serialWinnerGraphById,
   tenders,
 } from '../fixtures/data';
@@ -99,7 +106,23 @@ export const handlers = [
     return HttpResponse.json(graph);
   }),
 
-  http.get('/api/regions/aggregate', () => HttpResponse.json(regionAggregates)),
+  http.get('/api/regions/aggregate', ({ request }) => {
+    const category = new URL(request.url).searchParams.get('category');
+    const counts = new Map<string, number>();
+    for (const flag of approvedFlags) {
+      const code = flag.subject.authority?.region_code;
+      if (code === undefined) continue;
+      if (category !== null && flag.category !== category) continue;
+      counts.set(code, (counts.get(code) ?? 0) + 1);
+    }
+    const aggregates: RegionAggregate[] = Array.from(counts, ([region_code, count]) => ({
+      region_code,
+      region_name: regionName(region_code),
+      metric: count,
+      flag_count: count,
+    }));
+    return HttpResponse.json(aggregates);
+  }),
 
   http.get('/api/search', ({ request }) => {
     const q = new URL(request.url).searchParams.get('q')?.toLowerCase() ?? '';

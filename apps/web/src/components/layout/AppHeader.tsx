@@ -1,4 +1,4 @@
-import { AppBar, Box, Fade, Menu, MenuItem, Stack, Toolbar, Typography, useScrollTrigger } from '@mui/material';
+import { AppBar, Box, Fade, Menu, MenuItem, Stack, Toolbar, useScrollTrigger } from '@mui/material';
 import { ListIcon, MagnifyingGlassIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +9,6 @@ import { AppLink } from '@/components/controls/AppLink';
 import { BRAND } from '@/config/brand';
 import { paths } from '@/routes/paths';
 import { fonts } from '@/theme/typography';
-import { palette } from '@/theme/tokens';
 import { AppBrandmark } from './AppBrandmark';
 
 const NAV_ITEMS: ReadonlyArray<{ to: string; labelKey: string }> = [
@@ -54,29 +53,6 @@ export function AppHeader() {
             </AppLink>
           </Fade>
         </Box>
-
-        {/* Live indicator */}
-        <Stack
-          direction="row"
-          spacing={0.75}
-          alignItems="center"
-          sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }}
-        >
-          <Box className="punk-live-dot" aria-hidden />
-          <Typography
-            component="span"
-            sx={{
-              fontFamily: fonts.mono,
-              fontWeight: 600,
-              fontSize: '0.65rem',
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: palette.alarm,
-            }}
-          >
-            {t('common:live')}
-          </Typography>
-        </Stack>
 
         <Stack
           direction="row"

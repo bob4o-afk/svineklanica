@@ -9,7 +9,6 @@ import type {
   FlagSubject,
   FlagType,
   PriceSeries,
-  RegionAggregate,
   SerialWinnerGraph,
   SourceRef,
   TenderRef,
@@ -185,14 +184,5 @@ export const serialWinnerGraphById: Record<string, SerialWinnerGraph> = {
   },
 };
 
-// --- Region aggregates (placeholder codes until the Phase-3 topojson scheme is agreed) ---
-export const regionAggregates: RegionAggregate[] = [
-  { region_code: 'BG411', region_name: 'София (град)', metric: 18, flag_count: 18 },
-  { region_code: 'BG421', region_name: 'Пловдив', metric: 12, flag_count: 12 },
-  { region_code: 'BG331', region_name: 'Варна', metric: 9, flag_count: 9 },
-  { region_code: 'BG341', region_name: 'Бургас', metric: 7, flag_count: 7 },
-  { region_code: 'BG412', region_name: 'София (област)', metric: 5, flag_count: 5 },
-  { region_code: 'BG314', region_name: 'Плевен', metric: 4, flag_count: 4 },
-  { region_code: 'BG413', region_name: 'Благоевград', metric: 3, flag_count: 3 },
-  { region_code: 'BG344', region_name: 'Стара Загора', metric: 2, flag_count: 2 },
-];
+// Region aggregates are computed dynamically in the MSW handler from the flags above
+// (grouped by the authority's region_code, optionally filtered by sector) — see mocks/handlers.

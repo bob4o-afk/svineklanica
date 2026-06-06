@@ -1,22 +1,29 @@
+import { Stack } from '@mui/material';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { AppChartFrame } from '@/components/charts/AppChartFrame';
 import { AppChoroplethMap } from '@/components/charts/AppChoroplethMap';
+import { AppMapFilter } from '@/components/charts/AppMapFilter';
 import { AppSeo } from '@/components/layout/AppSeo';
 import { useBgProvincesGeo } from '@/hooks/queries/useBgProvincesGeo';
 import { useRegionAggregate } from '@/hooks/queries/useRegionAggregate';
 import { paths } from '@/routes/paths';
+import type { ProcurementSector } from '@/types/api';
 
-/** Corruption-by-region map: oblasti shaded by flag count; click a region to see its feed. */
+/** Corruption-by-region map: oblasti shaded by flag count, filterable by sector; click a region
+ *  to expand it and drill into that region's feed. */
 export function MapView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [category, setCategory] = useState<ProcurementSector | null>(null);
   const geo = useBgProvincesGeo();
-  const agg = useRegionAggregate();
+  const agg = useRegionAggregate(category);
 
   return (
-    <>
+    <Stack spacing={2}>
       <AppSeo title={t('viz:map.seoTitle')} />
+      <AppMapFilter value={category} onChange={setCategory} />
       <AppChartFrame
         title={t('viz:map.heading')}
         subtitle={t('viz:map.subtitle')}
@@ -37,6 +44,6 @@ export function MapView() {
           />
         ) : null}
       </AppChartFrame>
-    </>
+    </Stack>
   );
 }

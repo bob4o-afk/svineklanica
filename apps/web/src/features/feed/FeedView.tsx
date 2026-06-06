@@ -1,8 +1,9 @@
-import { Stack, Typography } from '@mui/material';
+import { Chip, Stack, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import type { AppFilterValue } from '@/components/flags/AppFilterBar';
 import { flagTypeMeta, severityMeta } from '@/lib/flags';
+import { regionName } from '@/lib/regions';
 import { sectorMeta } from '@/lib/sectors';
 import type { FlagSeverity, FlagSort, FlagType, ProcurementSector } from '@/types/api';
 import { FeedList } from './FeedList';
@@ -61,6 +62,17 @@ export function FeedView() {
     );
   };
 
+  const clearRegion = (): void => {
+    setParams(
+      (prev) => {
+        const copy = new URLSearchParams(prev);
+        copy.delete('region');
+        return copy;
+      },
+      { replace: true },
+    );
+  };
+
   return (
     <Stack spacing={2}>
       <Stack spacing={0.5}>
@@ -71,6 +83,13 @@ export function FeedView() {
           {t('feed:subtitle')}
         </Typography>
       </Stack>
+      {region !== null && region !== '' ? (
+        <Chip
+          label={`${t('feed:filter.region')}: ${regionName(region)}`}
+          onDelete={clearRegion}
+          sx={{ alignSelf: 'flex-start' }}
+        />
+      ) : null}
       <FeedToolbar sort={sort} onSortChange={setSort} filter={filter} onFilterChange={setFilter} />
       <FeedList
         query={{
