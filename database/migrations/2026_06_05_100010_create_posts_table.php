@@ -23,6 +23,14 @@ return new class extends Migration
             $table->string('excerpt')->nullable();
             $table->longText('body');
             $table->unsignedInteger('status')->default(PostStatus::Draft->value)->index();
+            // The core hierarchy (CLAUDE.md §1.0) — editorial, set by the admin on publish,
+            // so the feed is filterable by Sphere → Category → Severity (nullable until tagged).
+            $table->unsignedInteger('sphere')->nullable()->index();   // Sphere
+            $table->unsignedInteger('category')->nullable()->index(); // CorruptionCategory
+            $table->unsignedInteger('severity')->nullable()->index(); // FlagSeverity band
+            // Punk tags / badges (CLAUDE.md §1.0.1) — array of PostTag ints. jsonb so we can
+            // filter "posts carrying tag X" with a containment query.
+            $table->jsonb('tags')->nullable();
             $table->jsonb('source_urls')->nullable(); // primary-source links behind the claims
             $table->unsignedBigInteger('view_count')->default(0);
             $table->timestamp('published_at')->nullable()->index();

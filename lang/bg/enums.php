@@ -27,9 +27,24 @@ return [
         'high' => 'Висока',
         'critical' => 'Критична',
     ],
+    'sphere' => [
+        'judiciary' => 'Съдебна система',
+        'healthcare' => 'Здравеопазване',
+        'police' => 'Полиция',
+        'education' => 'Образование',
+    ],
+    'corruption_category' => [
+        'public_procurement' => 'Обществена поръчка',
+        'unregulated_payment' => 'Нерегламентирани плащания',
+    ],
     'post_status' => [
         'draft' => 'Чернова',
         'published' => 'Публикувана',
         'archived' => 'Архивирана',
+    ],
+    'post_tag' => [
+        'stealing_money' => 'Крадене на пари',
+        'dodgy_deals' => 'Кофти сделки',
+        'shady_business' => 'Шуши-муши',
     ],
 ];

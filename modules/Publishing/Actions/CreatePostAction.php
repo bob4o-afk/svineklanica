@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use Modules\Publishing\Contracts\PostRepository;
 use Modules\Publishing\Data\StorePostData;
 use Modules\Publishing\Enums\PostStatus;
+use Modules\Publishing\Enums\PostTag;
 use Modules\Publishing\Models\Post;
 
 /** Creates a post in Draft (pending) state, authored by the given admin. */
@@ -24,6 +25,10 @@ final class CreatePostAction
             'slug' => $this->slug($data->title),
             'excerpt' => $data->excerpt,
             'body' => $data->body,
+            'sphere' => $data->sphere,
+            'category' => $data->category,
+            'severity' => $data->severity,
+            'tags' => PostTag::collectFrom($data->tags),
             'source_urls' => $data->sourceUrls ?? [],
             'status' => PostStatus::Draft,
         ]);

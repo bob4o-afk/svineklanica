@@ -132,3 +132,7 @@ git tag v1.0.0 && git push origin v1.0.0
 # Prove zero-downtime during a deploy (run from anywhere):
 #   while true; do curl -s -o /dev/null -w "%{http_code}\n" https://bobinkata.com/_health; sleep 0.3; done
 ================================================================================
+
+git checkout main
+git tag v1.0.4
+git push origin v1.0.4

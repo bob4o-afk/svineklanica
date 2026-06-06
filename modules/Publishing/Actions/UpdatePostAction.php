@@ -7,6 +7,7 @@ namespace Modules\Publishing\Actions;
 use Modules\Publishing\Contracts\PostRepository;
 use Modules\Publishing\Data\UpdatePostData;
 use Modules\Publishing\Enums\PostStatus;
+use Modules\Publishing\Enums\PostTag;
 use Modules\Publishing\Models\Post;
 
 final class UpdatePostAction
@@ -25,6 +26,10 @@ final class UpdatePostAction
             'excerpt' => $data->excerpt,
             'body' => $data->body,
             'status' => $data->status,
+            'sphere' => $data->sphere,
+            'category' => $data->category,
+            'severity' => $data->severity,
+            'tags' => PostTag::collectFrom($data->tags),
             'source_urls' => $data->sourceUrls ?? [],
             'published_at' => $publishedAt,
         ]);

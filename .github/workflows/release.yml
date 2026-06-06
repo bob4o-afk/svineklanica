@@ -59,6 +59,41 @@ jobs:
             ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-web:${{ github.ref_name }}
             ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-web:latest
 
+  # Publish a GitHub Release for the pushed tag and mark it "Latest" on the
+  # Releases page. Without this, a `git push --tag` only creates a bare tag —
+  # the Releases page keeps showing whatever was last created by hand (e.g.
+  # `1.0.1`) as Latest. With it, every vX.Y.Z tag becomes the Latest release.
+  github-release:
+    name: Publish GitHub Release (marks the tag as Latest)
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # job-level override: the repo-wide default is read-only
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need history for the changelog range
+
+      - name: Build release notes since the previous tag
+        id: notes
+        run: |
+          PREV=$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo "")
+          if [ -n "$PREV" ]; then RANGE="$PREV..${{ github.ref_name }}"; else RANGE="${{ github.ref_name }}"; fi
+          {
+            echo "body<<EOF"
+            git log --pretty=format:'- %s (%h)' $RANGE
+            echo ""
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create / update the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.body }}
+          make_latest: true # this tag becomes the "Latest" release
+
   deploy:
     name: Deploy to VM (enable with repo variable DEPLOY_ENABLED=true)
     needs: build

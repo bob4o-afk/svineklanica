@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Shared\Enums\CorruptionCategory;
+use App\Shared\Enums\FlagSeverity;
+use App\Shared\Enums\Sphere;
 use App\Support\PublicId\PublicIdGenerator;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Modules\Detection\Enums\FlagSeverity;
 use Modules\Detection\Enums\FlagType;
 use Modules\Detection\Models\Flag;
 use Modules\Procurement\Models\Tender;
@@ -20,10 +22,16 @@ class FlagFactory extends Factory
 
     public function definition(): array
     {
+        $score = fake()->numberBetween(0, 100);
+
         return [
             'public_id' => PublicIdGenerator::generate(),
             'type' => fake()->randomElement(FlagType::cases()),
-            'severity' => fake()->randomElement(FlagSeverity::cases()),
+            'sphere' => fake()->randomElement(Sphere::cases()),
+            'category' => fake()->randomElement(CorruptionCategory::cases()),
+            'score' => $score,
+            // Band is always derived from the score — never set independently.
+            'severity' => FlagSeverity::fromScore($score),
             // Default subject: a tender (morph type respects the enforced morph map).
             'subject_type' => (new Tender)->getMorphClass(),
             'subject_id' => Tender::factory(),

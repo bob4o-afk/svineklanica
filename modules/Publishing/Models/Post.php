@@ -5,15 +5,20 @@ declare(strict_types=1);
 namespace Modules\Publishing\Models;
 
 use App\Models\User;
+use App\Shared\Enums\CorruptionCategory;
+use App\Shared\Enums\FlagSeverity;
+use App\Shared\Enums\Sphere;
 use App\Support\PublicId\HasPublicId;
 use Database\Factories\PostFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Publishing\Enums\PostStatus;
+use Modules\Publishing\Enums\PostTag;
 
 /**
  * A corruption post in the public feed (backend.md §14). `view_count` is the
@@ -33,6 +38,10 @@ final class Post extends Model
         'excerpt',
         'body',
         'status',
+        'sphere',
+        'category',
+        'severity',
+        'tags',
         'source_urls',
         'published_at',
     ];
@@ -41,6 +50,10 @@ final class Post extends Model
     {
         return [
             'status' => PostStatus::class,
+            'sphere' => Sphere::class,
+            'category' => CorruptionCategory::class,
+            'severity' => FlagSeverity::class,
+            'tags' => AsEnumCollection::of(PostTag::class),
             'source_urls' => 'array',
             'view_count' => 'integer',
             'published_at' => 'datetime',

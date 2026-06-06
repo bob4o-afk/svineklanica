@@ -45,8 +45,13 @@ export default defineConfig({
     prodCspPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
-      // External registration script (no inline <script>) so the strict prod script-src 'self' holds.
-      injectRegister: 'script',
+      // We register the SW ourselves from app code (src/lib/pwa.ts) via the
+      // `virtual:pwa-register` module — that's what lets us add a periodic update
+      // check so open tabs auto-reload onto a fresh deploy. `false` stops the plugin
+      // from ALSO injecting its own registration (which would double-register). The
+      // registration code is bundled into the app's hashed JS, not an inline <script>,
+      // so the strict prod `script-src 'self'` CSP still holds.
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'robots.txt'],
       manifest: {
         name: BRAND.name,

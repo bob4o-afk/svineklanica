@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\Detection\Models;
 
+use App\Shared\Enums\CorruptionCategory;
+use App\Shared\Enums\FlagSeverity;
+use App\Shared\Enums\Sphere;
 use App\Support\PublicId\HasPublicId;
 use Database\Factories\FlagFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
-use Modules\Detection\Enums\FlagSeverity;
 use Modules\Detection\Enums\FlagType;
 
 /**
@@ -24,6 +26,9 @@ final class Flag extends Model
 
     protected $fillable = [
         'type',
+        'sphere',
+        'category',
+        'score',
         'severity',
         'subject_type',
         'subject_id',
@@ -38,6 +43,9 @@ final class Flag extends Model
     {
         return [
             'type' => FlagType::class,
+            'sphere' => Sphere::class,
+            'category' => CorruptionCategory::class,
+            'score' => 'integer',
             'severity' => FlagSeverity::class,
             'source_urls' => 'array',
             'evidence' => 'array',

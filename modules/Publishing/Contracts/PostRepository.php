@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Publishing\Contracts;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Modules\Publishing\Data\PostFilterData;
 use Modules\Publishing\Models\Post;
 
 /** The only place that touches the posts table (backend.md §2). */
@@ -12,6 +13,9 @@ interface PostRepository
 {
     /** @return LengthAwarePaginator<Post> Published posts, newest first. */
     public function paginatePublished(int $perPage = 15): LengthAwarePaginator;
+
+    /** @return LengthAwarePaginator<Post> Published posts matching the filter, newest first. */
+    public function paginatePublishedFiltered(PostFilterData $filter): LengthAwarePaginator;
 
     /** Published only — for the public feed. */
     public function findPublished(string $publicId): ?Post;

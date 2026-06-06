@@ -17,7 +17,11 @@ return new class extends Migration
             $table->id();
             $table->uuid('public_id')->unique();
             $table->unsignedInteger('type')->index();     // FlagType
-            $table->unsignedInteger('severity')->index(); // FlagSeverity
+            // The core hierarchy (CLAUDE.md §1.0): Sphere → CorruptionCategory → severity band.
+            $table->unsignedInteger('sphere')->nullable()->index();   // Sphere (nullable: ingest may not infer it)
+            $table->unsignedInteger('category')->nullable()->index(); // CorruptionCategory
+            $table->unsignedTinyInteger('score');          // 0–100 suspicion % computed by the detector
+            $table->unsignedInteger('severity')->index(); // FlagSeverity band, derived from score
             $table->morphs('subject');                     // subject_type + subject_id (internal id)
             $table->string('subject_label')->nullable();   // denormalized for the feed
             $table->text('explanation_bg');

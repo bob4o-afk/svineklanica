@@ -3,8 +3,12 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use App\Shared\Enums\CorruptionCategory;
+use App\Shared\Enums\FlagSeverity;
+use App\Shared\Enums\Sphere;
 use Laravel\Sanctum\Sanctum;
 use Modules\Publishing\Enums\PostStatus;
+use Modules\Publishing\Enums\PostTag;
 use Modules\Publishing\Models\Post;
 
 it('publicly lists only published posts', function () {
@@ -31,6 +35,43 @@ it('shows a published post but 404s a draft', function () {
     $this->getJson("/api/posts/{$draft->public_id}")->assertNotFound();
 });
 
+it('filters the feed by sphere, category and severity', function () {
+    $match = Post::factory()->create([
+        'sphere' => Sphere::Healthcare,
+        'category' => CorruptionCategory::PublicProcurement,
+        'severity' => FlagSeverity::High,
+    ]);
+    Post::factory()->create([
+        'sphere' => Sphere::Police,
+        'category' => CorruptionCategory::UnregulatedPayment,
+        'severity' => FlagSeverity::Low,
+    ]);
+
+    $response = $this->getJson('/api/posts?'.http_build_query([
+        'sphere' => Sphere::Healthcare->value,
+        'category' => CorruptionCategory::PublicProcurement->value,
+        'severity' => FlagSeverity::High->value,
+    ]))->assertOk();
+
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.publicId'))->toBe($match->public_id);
+});
+
+it('filters the feed by a punk tag', function () {
+    $match = Post::factory()->create(['tags' => [PostTag::StealingMoney, PostTag::ShadyBusiness]]);
+    Post::factory()->create(['tags' => [PostTag::DodgyDeals]]);
+
+    $response = $this->getJson('/api/posts?tag='.PostTag::StealingMoney->value)->assertOk();
+
+    expect($response->json('data'))->toHaveCount(1);
+    expect($response->json('data.0.publicId'))->toBe($match->public_id);
+    expect($response->json('data.0.tags'))->toContain(PostTag::StealingMoney->value);
+});
+
+it('rejects an unknown punk tag filter', function () {
+    $this->getJson('/api/posts?tag=999999')->assertStatus(422);
+});
+
 it('forbids guests from creating posts', function () {
     $this->postJson('/api/admin/posts', ['title' => 'x', 'body' => 'y'])
         ->assertUnauthorized();
@@ -43,19 +84,39 @@ it('forbids non-admins from creating posts', function () {
         ->assertForbidden();
 });
 
-it('lets an admin create a post in Draft', function () {
+it('lets an admin create a post in Draft with taxonomy + punk tags', function () {
     Sanctum::actingAs(User::factory()->admin()->create());
 
     $response = $this->postJson('/api/admin/posts', [
         'title' => 'Скандал с обществена поръчка',
         'excerpt' => 'Кратко описание',
         'body' => 'Пълен текст на разследването',
+        'sphere' => Sphere::Healthcare->value,
+        'category' => CorruptionCategory::PublicProcurement->value,
+        'severity' => FlagSeverity::High->value,
+        'tags' => [PostTag::StealingMoney->value, PostTag::ShadyBusiness->value],
         'sourceUrls' => ['https://ted.europa.eu/notice/1'],
     ])->assertCreated();
 
     $response->assertJsonPath('status', PostStatus::Draft->value)
-        ->assertJsonPath('viewCount', 0);
+        ->assertJsonPath('viewCount', 0)
+        ->assertJsonPath('sphere', Sphere::Healthcare->value)
+        ->assertJsonPath('category', CorruptionCategory::PublicProcurement->value)
+        ->assertJsonPath('severity', FlagSeverity::High->value);
+
+    expect($response->json('tags'))
+        ->toBe([PostTag::StealingMoney->value, PostTag::ShadyBusiness->value]);
     expect(Post::count())->toBe(1);
+});
+
+it('rejects an unknown punk tag on create', function () {
+    Sanctum::actingAs(User::factory()->admin()->create());
+
+    $this->postJson('/api/admin/posts', [
+        'title' => 'x',
+        'body' => 'y',
+        'tags' => [999999],
+    ])->assertStatus(422);
 });
 
 it('lets an admin update and publish a post', function () {
