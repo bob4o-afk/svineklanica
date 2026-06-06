@@ -111,8 +111,12 @@ jobs:
       - uses: actions/checkout@v4
 
       # No `version` input: pnpm/action-setup@v4 reads the pinned
-      # `packageManager: pnpm@9.x` from apps/web/package.json. Setting both errors out.
+      # `packageManager: pnpm@9.x` from package.json. Setting both errors out.
+      # The action runs at the repo root (working-directory only applies to `run:`
+      # steps), and there's no root package.json — so point it at apps/web's.
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/web/package.json
 
       - uses: actions/setup-node@v4
         with:

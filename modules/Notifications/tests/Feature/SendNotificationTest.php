@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Mail;
 use Modules\Notifications\Actions\SendNotificationAction;
 use Modules\Notifications\Mail\GenericNotificationMail;
@@ -25,5 +26,5 @@ it('queues the notification mail instead of sending inline', function () {
 
 it('is a queued mailable (ShouldQueue)', function () {
     expect(new GenericNotificationMail('x'))
-        ->toBeInstanceOf(Illuminate\Contracts\Queue\ShouldQueue::class);
+        ->toBeInstanceOf(ShouldQueue::class);
 });

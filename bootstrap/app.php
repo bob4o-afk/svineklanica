@@ -57,7 +57,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // failures are mailed to the admin as a QUEUED notification (backend.md §3),
         // rate-limited so a spike can't flood the inbox. Client errors (4xx) and
         // validation are skipped — they're not incidents. Logging is untouched.
-        $exceptions->report(function (\Throwable $e): void {
+        $exceptions->report(function (Throwable $e): void {
             if ($e instanceof HttpExceptionInterface && $e->getStatusCode() < 500) {
                 return;
             }
