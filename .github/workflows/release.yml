@@ -118,11 +118,20 @@ jobs:
               chmod +x "$PLUGIN_DIR/docker-rollout"
             fi
 
-            # Point the stack at the freshly built tag, then pull the images. The pull
-            # MUST succeed — if it can't (e.g. GHCR package is private and this VM
-            # isn't `docker login`'d to ghcr.io), `set -e` aborts here instead of
+            # Pin the stack to the freshly built commit SHA, then pull. (sed exits 0
+            # even when it matches nothing, so we can't rely on `sed || echo` to add a
+            # missing line — grep-then-write, so IMAGE_TAG is ALWAYS the exact SHA and
+            # never silently falls back to the mutable `:latest`.)
+            if grep -q '^IMAGE_TAG=' .env.prod; then
+              sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${TAG}/" .env.prod
+            else
+              echo "IMAGE_TAG=${TAG}" >> .env.prod
+            fi
+            echo "Deploying IMAGE_TAG=${TAG}"
+
+            # The pull MUST succeed — if it can't (e.g. GHCR package is private and this
+            # VM isn't `docker login`'d to ghcr.io), `set -e` aborts here instead of
             # silently leaving the OLD image running. See DEPLOY.md §4.
-            sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${TAG}/" .env.prod || echo "IMAGE_TAG=${TAG}" >> .env.prod
             docker compose pull
 
             # Infra first; --wait BLOCKS until the Postgres healthcheck passes, so the
