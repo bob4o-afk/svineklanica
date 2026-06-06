@@ -90,6 +90,22 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
+      # Sync the infra files the VM runs `docker compose` against. The VM was
+      # originally seeded by hand (DEPLOY.md), so without this its compose file
+      # goes stale — e.g. it kept the pre-rename `liberhack-*` image names while
+      # CI pushes `svineklanitsa-*`, so every pull 404'd and the OLD image stayed.
+      # `.env.prod` (secrets, machine-specific) is deliberately NOT copied.
+      - name: Sync compose + Caddyfile to the VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_SSH_HOST }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "docker-compose.prod.yml,Caddyfile"
+          target: ${{ secrets.DEPLOY_PATH }}
+
       - name: SSH in, pull, migrate, ROLLING (zero-downtime) swap
         uses: appleboy/ssh-action@v1
         with:
