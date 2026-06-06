@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ghcr.io/OWNER/liberhack-web:latest
+          image: ghcr.io/OWNER/svineklanitsa-web:latest
           ports:
             - containerPort: 80
           resources:

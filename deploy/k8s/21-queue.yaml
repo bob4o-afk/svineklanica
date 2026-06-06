@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: queue
-          image: ghcr.io/OWNER/liberhack-api:latest
+          image: ghcr.io/OWNER/svineklanitsa-api:latest
           command: ["php", "artisan", "queue:work", "--tries=3", "--backoff=5"]
           envFrom:
             - configMapRef: { name: app-config }

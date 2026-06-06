@@ -1,5 +1,5 @@
 ================================================================================
- LiberHack — command cheat sheet  (run all from the repo root)
+ Свинекланица — command cheat sheet  (run all from the repo root)
 ================================================================================
 Everything runs in Docker (devops.md). The Laravel API is the repo root; the
 React client is in apps/web. Convenience targets live in the Makefile (`make ...`).
@@ -108,10 +108,10 @@ docker compose exec app php artisan mail:test you@example.com
  PROD IMAGE  (FrankenPHP — Dockerfile.prod; built by CI, but you can test locally)
 --------------------------------------------------------------------------------
 # Build the prod API image locally
-docker build -f Dockerfile.prod --target prod -t liberhack-api:prodtest .
+docker build -f Dockerfile.prod --target prod -t svineklanitsa-api:prodtest .
 
 # Smoke-test it on the dev network (serves Laravel public/ on :8000; needs db+redis up)
-docker run -d --name frankentest --network liberhack_default --env-file .env liberhack-api:prodtest
+docker run -d --name frankentest --network liberhack_default --env-file .env svineklanitsa-api:prodtest
 docker exec frankentest wget -qO- http://127.0.0.1:8000/_health    # expect "Application up"
 docker rm -f frankentest
 
@@ -123,7 +123,11 @@ git tag v1.0.0 && git push origin v1.0.0
 
 # On the VM (manual rolling swap of one service, if ever needed by hand):
 #   export COMPOSE_FILE=docker-compose.prod.yml COMPOSE_ENV_FILES=.env.prod
-#   docker compose pull && docker rollout app && docker rollout web
+#   docker compose pull
+#   # `docker rollout` is a CLI plugin; if it isn't installed (or docker runs via
+#   # sudo), fall back to a plain recreate so the command never errors out:
+#   docker rollout app || docker compose up -d app
+#   docker rollout web || docker compose up -d web
 
 # Prove zero-downtime during a deploy (run from anywhere):
 #   while true; do curl -s -o /dev/null -w "%{http_code}\n" https://bobinkata.com/_health; sleep 0.3; done

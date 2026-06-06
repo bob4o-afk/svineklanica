@@ -44,8 +44,8 @@ jobs:
           target: prod
           push: true
           tags: |
-            ghcr.io/${{ env.OWNER_LC }}/liberhack-api:${{ github.ref_name }}
-            ghcr.io/${{ env.OWNER_LC }}/liberhack-api:latest
+            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-api:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-api:latest
 
       - name: Build & push Web image
         uses: docker/build-push-action@v6
@@ -56,8 +56,8 @@ jobs:
           build-args: |
             VITE_MUI_X_LICENSE_KEY=${{ secrets.VITE_MUI_X_LICENSE_KEY }}
           tags: |
-            ghcr.io/${{ env.OWNER_LC }}/liberhack-web:${{ github.ref_name }}
-            ghcr.io/${{ env.OWNER_LC }}/liberhack-web:latest
+            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-web:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER_LC }}/svineklanitsa-web:latest
 
   deploy:
     name: Deploy to VM (enable with repo variable DEPLOY_ENABLED=true)
@@ -104,14 +104,15 @@ jobs:
             # backward-compatible so the old container still works during the overlap).
             docker compose run --rm --no-deps app php artisan migrate --force
 
-            # Zero-downtime rolling swap of the web-facing services. Roll only when the
-            # service is already running AND the rollout plugin is usable; otherwise
-            # (first deploy, or plugin unavailable on this host) recreate in place so the
-            # release never dies on the swap — at the cost of a brief restart blip.
+            # Zero-downtime rolling swap of the web-facing services. Try `docker
+            # rollout` when the service is already running; if the plugin is missing or
+            # the roll fails for ANY reason (e.g. docker via sudo can't find the plugin,
+            # "docker: unknown command: docker rollout"), `|| docker compose up -d`
+            # recreates in place so the release NEVER dies on the swap — at the cost of
+            # a brief restart blip. First deploy (service not yet running) → up -d too.
             for svc in app web; do
-              if docker compose ps --status running --services | grep -qx "$svc" \
-                 && docker rollout --help >/dev/null 2>&1; then
-                docker rollout "$svc"
+              if docker compose ps --status running --services | grep -qx "$svc"; then
+                docker rollout "$svc" || docker compose up -d "$svc"
               else
                 docker compose up -d "$svc"
               fi
@@ -148,11 +149,11 @@ jobs:
           server_port: ${{ secrets.MAIL_PORT }}
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          from: LiberHack Watchdog <${{ steps.from.outputs.addr }}>
+          from: Свинекланица Watchdog <${{ steps.from.outputs.addr }}>
           to: ${{ secrets.RELEASE_NOTIFY_TO }}
-          subject: "LiberHack Watchdog — release ${{ github.ref_name }} STARTED ⏳"
+          subject: "Свинекланица Watchdog — release ${{ github.ref_name }} STARTED ⏳"
           body: |
-            A release of LiberHack Watchdog has started.
+            A release of Свинекланица Watchdog has started.
 
             Version: ${{ github.ref_name }}
             Commit:  ${{ github.sha }}
@@ -202,11 +203,11 @@ jobs:
           server_port: ${{ secrets.MAIL_PORT }}
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          from: LiberHack Watchdog <${{ steps.from.outputs.addr }}>
+          from: Свинекланица Watchdog <${{ steps.from.outputs.addr }}>
           to: ${{ secrets.RELEASE_NOTIFY_TO }}
-          subject: "LiberHack Watchdog — released ${{ github.ref_name }} ✅"
+          subject: "Свинекланица Watchdog — released ${{ github.ref_name }} ✅"
           body: |
-            A new version of LiberHack Watchdog has shipped successfully.
+            A new version of Свинекланица Watchdog has shipped successfully.
 
             Version: ${{ github.ref_name }}
             Commit:  ${{ github.sha }}
@@ -253,11 +254,11 @@ jobs:
           server_port: ${{ secrets.MAIL_PORT }}
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          from: LiberHack Watchdog <${{ steps.from.outputs.addr }}>
+          from: Свинекланица Watchdog <${{ steps.from.outputs.addr }}>
           to: ${{ secrets.RELEASE_NOTIFY_TO }}
-          subject: "LiberHack Watchdog — release ${{ github.ref_name }} FAILED ❌"
+          subject: "Свинекланица Watchdog — release ${{ github.ref_name }} FAILED ❌"
           body: |
-            A release of LiberHack Watchdog FAILED.
+            A release of Свинекланица Watchdog FAILED.
 
             Version:       ${{ github.ref_name }}
             Failed stage:  ${{ steps.which.outputs.stage }}

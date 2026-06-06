@@ -40,7 +40,7 @@ In `.env.prod` set (all the `<REPLACE_ME>` slots in `.env.prod.example`):
   (`APP_URL` / `FRONTEND_URL` / `CORS_ALLOWED_ORIGINS` / `SANCTUM_STATEFUL_DOMAINS` follow it)
 - real `DB_PASSWORD`, real **mail** creds (see plan.txt §2A), `GRAFANA_ADMIN_PASSWORD`
 - `REGISTRY_OWNER=<your github user/org>`, `IMAGE_TAG=v1.0.0`
-- generate `APP_KEY`: `docker run --rm ghcr.io/<owner>/liberhack-api:<tag> php artisan key:generate --show` → paste it in.
+- generate `APP_KEY`: `docker run --rm ghcr.io/<owner>/svineklanitsa-api:<tag> php artisan key:generate --show` → paste it in.
 - (`APP_ENV=production` / `APP_DEBUG=false` are already set in the template.)
 - The SSH deploy key is NOT in `.env.prod` — its private half goes in the GitHub secret `DEPLOY_SSH_KEY`.
 

@@ -1,7 +1,7 @@
 {
-    "name": "liberhack/api",
+    "name": "svineklanitsa/api",
     "type": "project",
-    "description": "LiberHack public-procurement watchdog API (modular Laravel).",
+    "description": "Свинекланица (Svineklanitsa Watchdog) public-procurement watchdog API (modular Laravel).",
     "license": "MIT",
     "require": {
         "php": "^8.3",
