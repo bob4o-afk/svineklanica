@@ -162,15 +162,17 @@ export const pendingFlags: FlagPost[] = flagPosts.filter((f) => f.status === 'pe
 
 // --- One curated price series (the "price creep" story) ---
 const laptopVendors = [companies[0], companies[2], companies[4]] as const;
+// Mostly a believable upward creep, with one rigged tender (index 2) wildly overpriced — the
+// textbook overpricing signal the price chart highlights (CLAUDE.md §1.1.1, frontend.md §10).
+const laptopUnitPrices = [1400, 1780, 4200, 2160, 2540, 2920];
 export const priceSeriesByKey: Record<string, PriceSeries> = {
   laptops: {
     series_key: 'laptops',
     product_label: 'Лаптоп 15" i5 / 16GB RAM',
     cpv_code: '30213100',
     unit: 'бр.',
-    points: Array.from({ length: 6 }, (_, i) => {
+    points: laptopUnitPrices.map((unitPrice, i) => {
       const vendor = laptopVendors[i % laptopVendors.length];
-      const unitPrice = 1400 + i * 380;
       return {
         captured_at: daysAgoISO(150 - i * 25),
         price: { amount: unitPrice, currency: 'BGN' as const, vat_included: true },

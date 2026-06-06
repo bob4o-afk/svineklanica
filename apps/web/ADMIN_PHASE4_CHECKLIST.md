@@ -59,7 +59,7 @@
 - [ ] The map is a **d3-geo choropleth**, not Mapbox — a deliberate offline/demo-safe choice.
 
 ## H. Re-run the gates before the demo
-- [ ] `corepack pnpm -C apps/web typecheck` · `… lint` · `… exec vitest run` (46 pass) · `… build` — all green.
+- [x] `corepack pnpm -C apps/web typecheck` · `… lint` · `… exec vitest run` (54 pass) · `… build` — all green. _(Session 5, after viz QA + fixes.)_
 
 ## I. When the BACKEND lands (seam reconciliation — cross-lane, see `API_SEAM.md`)
 - [ ] Backend ships `/api/admin/*` exactly per `API_SEAM.md` (csrf-cookie, login/logout/me, flag-posts queue+detail+approve+reject, sources CRUD) and **enforces the Sanctum session + an editor policy server-side** — the client `ProtectedRoute` is UX only.

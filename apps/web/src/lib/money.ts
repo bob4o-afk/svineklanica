@@ -32,3 +32,20 @@ export function formatMoneyShort(money: MoneyAmount): string {
   if (n >= 1_000) return `${Math.round(n / 1_000)} ${thousand} ${suffix}`;
   return `${n} ${suffix}`;
 }
+
+/** Compact money for chart **axes**: like `formatMoneyShort` but with adaptive precision so
+ *  500-step ticks stay distinct (1500 -> "1,5 хил. лв", 2000 -> "2 хил. лв"). `formatMoneyShort`
+ *  rounds to the nearest thousand, which collides adjacent axis ticks — keep that one for
+ *  cards/badges and use this only on the price chart's y-axis. */
+export function formatMoneyAxis(money: MoneyAmount): string {
+  const suffix =
+    money.currency === 'BGN' ? i18n.t('common:units.bgnShort') : i18n.t('common:units.eurShort');
+  const million = i18n.t('common:units.million');
+  const thousand = i18n.t('common:units.thousand');
+  const n = money.amount;
+  const compact = (value: number): string =>
+    new Intl.NumberFormat('bg-BG', { maximumFractionDigits: 1 }).format(value);
+  if (Math.abs(n) >= 1_000_000) return `${compact(n / 1_000_000)} ${million} ${suffix}`;
+  if (Math.abs(n) >= 1_000) return `${compact(n / 1_000)} ${thousand} ${suffix}`;
+  return `${compact(n)} ${suffix}`;
+}
