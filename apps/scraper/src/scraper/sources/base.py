@@ -21,6 +21,7 @@ from ..config import Config, SourceConfig
 from ..contract import IngestRecord
 from ..http import PoliteClient
 from ..sinks import NdjsonSink
+from ..spheres import CATEGORY_PROCUREMENT, classify_sphere
 
 log = logging.getLogger("scraper.source")
 
@@ -47,6 +48,10 @@ class Source(ABC):
     id: str = ""
     #: File extension for raw snapshots (csv/xml/json/html...).
     raw_ext: str = "bin"
+    #: Optional fixed sphere for this source.
+    sphere: str | None = None
+    #: Default category for this source.
+    category: str = CATEGORY_PROCUREMENT
 
     def __init__(self, client: PoliteClient, sink: NdjsonSink, source_cfg: SourceConfig,
                  config: Config) -> None:
@@ -81,6 +86,21 @@ class Source(ABC):
         for payload in self.fetch():
             self.sink.save_raw(payload.content, ext=payload.ext or self.raw_ext)
             for record in self.parse(payload):
+                # Tag with category and sphere
+                record.payload.setdefault("category", self.category)
+                
+                # Infer sphere if not fixed
+                if self.sphere:
+                    record.payload["sphere"] = self.sphere
+                else:
+                    # Try to infer from authority name or CPV
+                    authority = record.payload.get("authority", {})
+                    auth_name = authority.get("name") if isinstance(authority, dict) else str(authority)
+                    cpv = record.payload.get("cpv")
+                    inferred = classify_sphere(auth_name, cpv)
+                    if inferred:
+                        record.payload["sphere"] = inferred
+
                 yield record
                 count += 1
                 if limit is not None and count >= limit:

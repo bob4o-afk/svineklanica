@@ -30,6 +30,20 @@ SOURCE_DEFAULTS: dict[str, str] = {
     "eop": "https://app.eop.bg",
     "isun": "https://2020.eufunds.bg",
     "sebra": "https://minfin.bg",
+    "ncpr": "https://www.ncpr.bg",
+    "nhif": "https://www.nhif.bg",
+    "mz": "https://www.mh.government.bg",
+    "mz_jobs": "https://www.mh.government.bg",
+    "mz_assets": "https://www.mh.government.bg",
+    "vss": "https://profile-op.vss.justice.bg",
+    "prb": "https://prb.bg",
+    "vss_jobs": "https://vss.justice.bg",
+    "ivss_declarations": "https://www.inspectoratvss.bg",
+    "mjs_assets": "https://www.mjs.bg",
+    "mvr": "https://mvr.bg",
+    "mvr_donations": "https://mvr.bg",
+    "mvr_jobs": "https://mvr.bg",
+    "mvr_assets": "https://mvr.bg",
 }
 
 
