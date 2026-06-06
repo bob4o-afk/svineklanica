@@ -123,7 +123,11 @@ git tag v1.0.0 && git push origin v1.0.0
 
 # On the VM (manual rolling swap of one service, if ever needed by hand):
 #   export COMPOSE_FILE=docker-compose.prod.yml COMPOSE_ENV_FILES=.env.prod
-#   docker compose pull && docker rollout app && docker rollout web
+#   docker compose pull
+#   # `docker rollout` is a CLI plugin; if it isn't installed (or docker runs via
+#   # sudo), fall back to a plain recreate so the command never errors out:
+#   docker rollout app || docker compose up -d app
+#   docker rollout web || docker compose up -d web
 
 # Prove zero-downtime during a deploy (run from anywhere):
 #   while true; do curl -s -o /dev/null -w "%{http_code}\n" https://bobinkata.com/_health; sleep 0.3; done
