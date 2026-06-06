@@ -1,5 +1,5 @@
 import { Chip, Divider, Stack, Typography } from '@mui/material';
-import { ArrowLeftIcon } from '@phosphor-icons/react';
+import { ArrowLeftIcon, ChartLineIcon, GraphIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { AppButton } from '@/components/controls/AppButton';
@@ -8,6 +8,7 @@ import { AppSkeleton } from '@/components/feedback/AppSkeleton';
 import { AppSeo } from '@/components/layout/AppSeo';
 import { AppEvidenceList } from '@/components/flags/AppEvidenceList';
 import { AppFlagBadge } from '@/components/flags/AppFlagBadge';
+import { AppSectorBadge } from '@/components/flags/AppSectorBadge';
 import { AppSeverityChip } from '@/components/flags/AppSeverityChip';
 import { AppSourceLink } from '@/components/flags/AppSourceLink';
 import { AppTldr } from '@/components/flags/AppTldr';
@@ -51,6 +52,7 @@ export function PostView({ publicId }: PostViewProps) {
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <AppSeverityChip severity={flag.severity} />
         <AppFlagBadge type={flag.type} />
+        {flag.category !== undefined ? <AppSectorBadge sector={flag.category} /> : null}
       </Stack>
 
       <Typography variant="h4" component="h1">
@@ -58,6 +60,28 @@ export function PostView({ publicId }: PostViewProps) {
       </Typography>
 
       <AppTldr text={makeTldr(flag)} />
+
+      {flag.series_key !== undefined ? (
+        <AppButton
+          variant="outlined"
+          to={paths.price(flag.series_key)}
+          startIcon={<ChartLineIcon />}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          {t('viz:price.viewLink')}
+        </AppButton>
+      ) : null}
+
+      {flag.type === 'serial_winner' && flag.subject.company !== undefined ? (
+        <AppButton
+          variant="outlined"
+          to={paths.network(flag.subject.company.public_id)}
+          startIcon={<GraphIcon />}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          {t('viz:network.viewLink')}
+        </AppButton>
+      ) : null}
 
       <section>
         <Typography variant="h6" component="h2" gutterBottom>

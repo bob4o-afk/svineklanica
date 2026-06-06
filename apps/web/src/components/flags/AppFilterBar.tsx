@@ -1,7 +1,8 @@
 import { Button, Chip, Stack, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { flagTypeMeta, severityMeta } from '@/lib/flags';
-import type { FlagSeverity, FlagType } from '@/types/api';
+import { ALL_SECTORS, sectorMeta } from '@/lib/sectors';
+import type { FlagSeverity, FlagType, ProcurementSector } from '@/types/api';
 
 const ALL_SEVERITIES: readonly FlagSeverity[] = ['critical', 'high', 'medium', 'low'];
 const ALL_TYPES: readonly FlagType[] = [
@@ -16,6 +17,7 @@ const ALL_TYPES: readonly FlagType[] = [
 
 export interface AppFilterValue {
   type: FlagType[];
+  category: ProcurementSector[];
   severity: FlagSeverity[];
 }
 
@@ -32,7 +34,8 @@ function toggle<T>(list: T[], item: T): T[] {
  *  caller persists them to the URL and feeds them to useFlagFeed. */
 export function AppFilterBar({ value, onChange }: AppFilterBarProps) {
   const { t } = useTranslation();
-  const hasAny = value.type.length > 0 || value.severity.length > 0;
+  const hasAny =
+    value.type.length > 0 || value.severity.length > 0 || value.category.length > 0;
 
   return (
     <Stack spacing={1}>
@@ -71,8 +74,30 @@ export function AppFilterBar({ value, onChange }: AppFilterBarProps) {
             />
           );
         })}
+      </Stack>
+      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+        <Typography variant="overline" color="text.secondary">
+          {t('feed:filter.category')}
+        </Typography>
+        {ALL_SECTORS.map((sector) => {
+          const active = value.category.includes(sector);
+          return (
+            <Chip
+              key={sector}
+              label={t(sectorMeta[sector].i18nKey)}
+              size="small"
+              color={active ? 'primary' : 'default'}
+              variant={active ? 'filled' : 'outlined'}
+              onClick={() => onChange({ ...value, category: toggle(value.category, sector) })}
+            />
+          );
+        })}
         {hasAny ? (
-          <Button size="small" variant="text" onClick={() => onChange({ type: [], severity: [] })}>
+          <Button
+            size="small"
+            variant="text"
+            onClick={() => onChange({ type: [], severity: [], category: [] })}
+          >
             {t('feed:filter.clear')}
           </Button>
         ) : null}

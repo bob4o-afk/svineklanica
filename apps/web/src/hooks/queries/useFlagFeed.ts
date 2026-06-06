@@ -14,6 +14,7 @@ async function fetchFeed(query: FlagFeedQuery, page: number): Promise<Paginated<
   if (query.cpv) params.set('cpv', query.cpv);
   if (query.q) params.set('q', query.q);
   for (const type of query.type ?? []) params.append('type', type);
+  for (const category of query.category ?? []) params.append('category', category);
   for (const severity of query.severity ?? []) params.append('severity', severity);
 
   const response = await http.get<Paginated<FlagPost>>(`/flag-posts?${params.toString()}`);

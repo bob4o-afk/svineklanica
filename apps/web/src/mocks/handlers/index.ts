@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import type { FlagPost, FlagSeverity, FlagType, Paginated } from '@/types/api';
+import type { FlagPost, FlagSeverity, FlagType, Paginated, ProcurementSector } from '@/types/api';
 import {
   approvedFlags,
   authorities,
@@ -35,6 +35,7 @@ export const handlers = [
     const url = new URL(request.url);
     const sort = url.searchParams.get('sort');
     const types = url.searchParams.getAll('type') as FlagType[];
+    const categories = url.searchParams.getAll('category') as ProcurementSector[];
     const severities = url.searchParams.getAll('severity') as FlagSeverity[];
     const region = url.searchParams.get('region');
     const q = url.searchParams.get('q')?.toLowerCase() ?? '';
@@ -43,6 +44,8 @@ export const handlers = [
 
     let items = approvedFlags.slice();
     if (types.length > 0) items = items.filter((f) => types.includes(f.type));
+    if (categories.length > 0)
+      items = items.filter((f) => f.category !== undefined && categories.includes(f.category));
     if (severities.length > 0) items = items.filter((f) => severities.includes(f.severity));
     if (region) items = items.filter((f) => f.subject.authority?.region_code === region);
     if (q) {
@@ -91,8 +94,8 @@ export const handlers = [
   }),
 
   http.get('/api/graphs/serial-winner/:publicId', ({ params }) => {
-    const graph = serialWinnerGraphById[String(params.publicId)];
-    if (!graph) return new HttpResponse(null, { status: 404 });
+    // Unknown ids return an empty graph (friendly "no network" state) rather than a 404.
+    const graph = serialWinnerGraphById[String(params.publicId)] ?? { nodes: [], edges: [] };
     return HttpResponse.json(graph);
   }),
 

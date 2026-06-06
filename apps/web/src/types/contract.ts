@@ -20,6 +20,17 @@ export type SubjectType = 'tender' | 'authority' | 'company';
 export type Currency = 'BGN' | 'EUR';
 export type FlagSort = 'newest' | 'severity';
 
+/** Procurement sector (CPV-derived) — lets a citizen filter "show me the hospital/school deals". */
+export type ProcurementSector =
+  | 'health'
+  | 'education'
+  | 'roads'
+  | 'construction'
+  | 'it'
+  | 'utilities'
+  | 'supplies'
+  | 'other';
+
 export interface SourceRef {
   url: string;
   label: string;
@@ -67,6 +78,7 @@ export interface EvidenceItem {
 export interface FlagPost {
   public_id: string;
   type: FlagType;
+  category?: ProcurementSector;
   severity: FlagSeverity;
   status: ApprovalStatus;
   subject: FlagSubject;
@@ -76,6 +88,8 @@ export interface FlagPost {
   sources: SourceRef[]; // >= 1 (no source -> no flag)
   detected_at: string;
   published_at?: string;
+  /** Present on price_discrepancy flags — links to the product's price-over-time series. */
+  series_key?: string;
 }
 
 export interface Paginated<T> {
@@ -87,6 +101,7 @@ export interface Paginated<T> {
 
 export interface FlagFeedQuery {
   type?: FlagType[];
+  category?: ProcurementSector[];
   severity?: FlagSeverity[];
   region?: string;
   cpv?: string;

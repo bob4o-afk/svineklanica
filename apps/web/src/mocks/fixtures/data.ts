@@ -14,16 +14,17 @@ import type {
   SourceRef,
   TenderRef,
 } from '@/types/api';
+import { sectorFromCpv } from '@/lib/sectors';
 import { daysAgoISO, intBetween, mulberry32, pick } from './factory';
 import { makeExplanation, makeHeadline } from './headlines';
 
 export const authorities: AuthorityRef[] = [
-  { public_id: 'auth-1', name: 'Община Старо Корито', region_code: 'BG-DEMO-01' },
-  { public_id: 'auth-2', name: 'Община Бели бряг', region_code: 'BG-DEMO-02' },
-  { public_id: 'auth-3', name: 'Областна управа Среднево', region_code: 'BG-DEMO-03' },
-  { public_id: 'auth-4', name: 'Община Долна вода', region_code: 'BG-DEMO-02' },
-  { public_id: 'auth-5', name: 'Държавна агенция за обществени имоти', region_code: 'BG-DEMO-01' },
-  { public_id: 'auth-6', name: 'Община Горни ливади', region_code: 'BG-DEMO-04' },
+  { public_id: 'auth-1', name: 'Община Старо Корито', region_code: 'BG411' },
+  { public_id: 'auth-2', name: 'Община Бели бряг', region_code: 'BG421' },
+  { public_id: 'auth-3', name: 'Областна управа Среднево', region_code: 'BG331' },
+  { public_id: 'auth-4', name: 'Община Долна вода', region_code: 'BG341' },
+  { public_id: 'auth-5', name: 'Държавна агенция за обществени имоти', region_code: 'BG412' },
+  { public_id: 'auth-6', name: 'Община Горни ливади', region_code: 'BG314' },
 ];
 
 export const companies: CompanyRef[] = [
@@ -44,6 +45,9 @@ export const tenders: TenderRef[] = [
   { public_id: 'tend-4', title: 'Доставка на медицинско оборудване', cpv_code: '33100000' },
   { public_id: 'tend-5', title: 'Зимно поддържане на пътища', cpv_code: '90620000' },
   { public_id: 'tend-6', title: 'Реконструкция на водопровод', cpv_code: '45231300' },
+  { public_id: 'tend-7', title: 'Образователни услуги и обучения', cpv_code: '80500000' },
+  { public_id: 'tend-8', title: 'Изграждане на спортна зала', cpv_code: '45212200' },
+  { public_id: 'tend-9', title: 'Доставка на хранителни продукти', cpv_code: '15800000' },
 ];
 
 const WEIGHTED_TYPES: FlagType[] = [
@@ -89,7 +93,10 @@ function buildFlag(index: number, rng: () => number): FlagPost {
   const severity = pick(WEIGHTED_SEVERITIES, rng());
   const authority = pick(authorities, rng());
   const company = pick(companies, rng());
-  const tender = pick(tenders, rng());
+  const isPriceFlag = type === 'price_discrepancy';
+  const randomTender = pick(tenders, rng());
+  // Price-discrepancy flags tell the laptop "price creep" story, so they link to that series.
+  const tender = isPriceFlag ? (tenders[0] ?? randomTender) : randomTender;
   const multiplier = intBetween(2, 12, rng());
   const count = intBetween(4, 11, rng());
   const amount = intBetween(50_000, 4_000_000, rng());
@@ -116,6 +123,7 @@ function buildFlag(index: number, rng: () => number): FlagPost {
   return {
     public_id: `flag-${index + 1}`,
     type,
+    category: sectorFromCpv(tender.cpv_code),
     severity,
     status: approved ? 'approved' : 'pending',
     subject: buildSubject(type, authority, company, tender),
@@ -125,6 +133,7 @@ function buildFlag(index: number, rng: () => number): FlagPost {
     sources,
     detected_at: detectedAt,
     ...(approved ? { published_at: detectedAt } : {}),
+    ...(isPriceFlag ? { series_key: 'laptops' } : {}),
   };
 }
 
@@ -178,8 +187,12 @@ export const serialWinnerGraphById: Record<string, SerialWinnerGraph> = {
 
 // --- Region aggregates (placeholder codes until the Phase-3 topojson scheme is agreed) ---
 export const regionAggregates: RegionAggregate[] = [
-  { region_code: 'BG-DEMO-01', region_name: 'Среднево-Запад', metric: 12, flag_count: 12 },
-  { region_code: 'BG-DEMO-02', region_name: 'Беломорие', metric: 8, flag_count: 8 },
-  { region_code: 'BG-DEMO-03', region_name: 'Среднево-Изток', metric: 5, flag_count: 5 },
-  { region_code: 'BG-DEMO-04', region_name: 'Горноречие', metric: 3, flag_count: 3 },
+  { region_code: 'BG411', region_name: 'София (град)', metric: 18, flag_count: 18 },
+  { region_code: 'BG421', region_name: 'Пловдив', metric: 12, flag_count: 12 },
+  { region_code: 'BG331', region_name: 'Варна', metric: 9, flag_count: 9 },
+  { region_code: 'BG341', region_name: 'Бургас', metric: 7, flag_count: 7 },
+  { region_code: 'BG412', region_name: 'София (област)', metric: 5, flag_count: 5 },
+  { region_code: 'BG314', region_name: 'Плевен', metric: 4, flag_count: 4 },
+  { region_code: 'BG413', region_name: 'Благоевград', metric: 3, flag_count: 3 },
+  { region_code: 'BG344', region_name: 'Стара Загора', metric: 2, flag_count: 2 },
 ];
