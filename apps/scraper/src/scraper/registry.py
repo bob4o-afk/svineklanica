@@ -3,13 +3,23 @@
 from __future__ import annotations
 
 from .sources.aop import AopSource
+from .sources.api_jobs import ApiJobsSource
+from .sources.api_projects import ApiProjectsSource
+from .sources.api_tenders import ApiTendersSource
+from .sources.avtomagistrali_tenders import AvtomagistraliTendersSource
 from .sources.base import Source
 from .sources.caiseop import CaiseopSource
 from .sources.egov import EgovSource
 from .sources.eop import EopSource
+from .sources.gov_audits import GovAuditsSource
+from .sources.gov_concessions import GovConcessionsSource
+from .sources.gov_declarations import GovDeclarationsSource
+from .sources.gov_jobs import GovJobsSource
+from .sources.gov_tenders import GovTendersSource
 from .sources.isun import IsunSource
 from .sources.ivss_declarations import IvssDeclarationsSource
 from .sources.mjs_assets import MjsAssetsSource
+from .sources.mrrb_tenders import MrrbTendersSource
 from .sources.mvr import MvrSource
 from .sources.mvr_assets import MvrAssetsSource
 from .sources.mvr_donations import MvrDonationsSource
@@ -47,6 +57,16 @@ SOURCES: dict[str, type[Source]] = {
     MvrDonationsSource.id: MvrDonationsSource,
     MvrJobsSource.id: MvrJobsSource,
     MvrAssetsSource.id: MvrAssetsSource,
+    GovTendersSource.id: GovTendersSource,
+    GovJobsSource.id: GovJobsSource,
+    GovAuditsSource.id: GovAuditsSource,
+    GovDeclarationsSource.id: GovDeclarationsSource,
+    GovConcessionsSource.id: GovConcessionsSource,
+    ApiTendersSource.id: ApiTendersSource,
+    ApiJobsSource.id: ApiJobsSource,
+    ApiProjectsSource.id: ApiProjectsSource,
+    MrrbTendersSource.id: MrrbTendersSource,
+    AvtomagistraliTendersSource.id: AvtomagistraliTendersSource,
 }
 
 

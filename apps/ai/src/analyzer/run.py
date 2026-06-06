@@ -169,7 +169,7 @@ def main() -> None:
         sources = sorted(SOURCE_DEFAULTS) if args.all else ([args.source] if args.source else [])
 
     if not sources:
-        parser.error("Pass --source <id>, --all, --sphere <healthcare|judiciary|police>, or --list.")
+        parser.error("Pass --source <id>, --all, --sphere <healthcare|judiciary|police|government|roads>, or --list.")
 
     config = load_config()
     client = build_client(config) if not args.no_llm else build_client(_DisableLLM(config))

@@ -22,6 +22,12 @@ PROMPTS = [
     "judiciary_category_router",
     "donation_influence",
     "police_category_router",
+    "audit_findings",
+    "gov_official_wealth",
+    "concession_abuse",
+    "government_category_router",
+    "project_abuse",
+    "roads_category_router",
 ]
 
 

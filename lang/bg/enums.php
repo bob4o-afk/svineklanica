@@ -32,4 +32,10 @@ return [
         'published' => 'Публикувана',
         'archived' => 'Архивирана',
     ],
+    'approval_status' => [
+        'detected' => 'Открит',
+        'pending' => 'Чака одобрение',
+        'approved' => 'Одобрен',
+        'rejected' => 'Отхвърлен',
+    ],
 ];

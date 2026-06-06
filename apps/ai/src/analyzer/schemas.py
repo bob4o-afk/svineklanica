@@ -51,6 +51,9 @@ FLAG_RIGGED_COMPETITION = "rigged_competition"
 FLAG_UNDERVALUED_SALE = "undervalued_sale"
 FLAG_UNEXPLAINED_WEALTH = "unexplained_wealth"
 FLAG_DONOR_INFLUENCE = "donor_influence"
+FLAG_AUDIT_FINDING = "audit_finding"
+FLAG_CONCESSION_ABUSE = "concession_abuse"
+FLAG_PROJECT_ABUSE = "project_abuse"
 
 
 # --------------------------------------------------------------------------- #
@@ -215,6 +218,50 @@ class DonationInfluenceOutput(BaseModel):
     repeat_donor: bool = False
     quid_pro_quo_suspicion: float = _Conf
     named_donor: str = ""
+    rationale_bg: str = ""
+
+
+class AuditFindingsOutput(BaseModel):
+    """State Audit Office report — systemic misuse or repeat violations."""
+
+    findings_severity: float = _Conf
+    repeat_target: bool = False
+    unimplemented_recommendations: bool = False
+    named_institution: str = ""
+    rationale_bg: str = ""
+
+
+class GovOfficialWealthOutput(BaseModel):
+    """High-level official property declaration (КПКОНПИ register)."""
+
+    wealth_vs_income_suspicion: float = _Conf
+    late_or_missing_declaration: bool = False
+    sudden_increase: bool = False
+    undeclared_interests: bool = False
+    named_assets: list[str] = Field(default_factory=list)
+    official_name: str = ""
+    institution: str = ""
+    rationale_bg: str = ""
+
+
+class ConcessionAbuseOutput(BaseModel):
+    """National Concession Register — pay-to-play or amendment abuse."""
+
+    abuse_confidence: float = _Conf
+    operator_lock_in: bool = False
+    amendment_pattern: bool = False
+    limited_competition: bool = False
+    rationale_bg: str = ""
+
+
+class ProjectAbuseOutput(BaseModel):
+    """Road infrastructure project — delay, funding, or contractor lock-in abuse."""
+
+    abuse_confidence: float = _Conf
+    delay_pattern: bool = False
+    funding_anomaly: bool = False
+    contractor_lock_in: bool = False
+    project_name: str = ""
     rationale_bg: str = ""
 
 

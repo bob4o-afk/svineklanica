@@ -31,4 +31,18 @@ enum FlagType: int implements HasLabel
             self::DocClone => __('enums.flag_type.doc_clone'),
         };
     }
+
+    /** contract.ts FlagType wire value. */
+    public function wire(): string
+    {
+        return match ($this) {
+            self::PriceDiscrepancy => 'price_discrepancy',
+            self::TailoredSpec => 'tailored_spec',
+            self::SerialWinner => 'serial_winner',
+            self::Cancelled => 'cancelled',
+            self::ImplausibleScope => 'implausible_scope',
+            self::DelayedPayment => 'delayed_payment',
+            self::DocClone => 'doc_clone',
+        };
+    }
 }

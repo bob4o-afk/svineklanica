@@ -6,6 +6,7 @@ namespace Database\Factories;
 
 use App\Support\PublicId\PublicIdGenerator;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Modules\Detection\Enums\ApprovalStatus;
 use Modules\Detection\Enums\FlagSeverity;
 use Modules\Detection\Enums\FlagType;
 use Modules\Detection\Models\Flag;
@@ -24,6 +25,9 @@ class FlagFactory extends Factory
             'public_id' => PublicIdGenerator::generate(),
             'type' => fake()->randomElement(FlagType::cases()),
             'severity' => fake()->randomElement(FlagSeverity::cases()),
+            'status' => ApprovalStatus::Pending,
+            'title' => fake()->sentence(6),
+            'category' => fake()->randomElement(['roads', 'health', 'supplies', 'other']),
             // Default subject: a tender (morph type respects the enforced morph map).
             'subject_type' => (new Tender)->getMorphClass(),
             'subject_id' => Tender::factory(),

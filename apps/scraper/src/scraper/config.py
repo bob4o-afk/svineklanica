@@ -44,6 +44,16 @@ SOURCE_DEFAULTS: dict[str, str] = {
     "mvr_donations": "https://mvr.bg",
     "mvr_jobs": "https://mvr.bg",
     "mvr_assets": "https://mvr.bg",
+    "gov_tenders": "https://www.government.bg",
+    "gov_jobs": "https://iisda.government.bg",
+    "gov_audits": "https://www.bulnao.government.bg",
+    "gov_declarations": "https://register.antikorupcia.bg",
+    "gov_concessions": "https://nkr.government.bg",
+    "api_tenders": "https://www.api.bg",
+    "api_jobs": "https://www.api.bg",
+    "api_projects": "https://www.api.bg",
+    "mrrb_tenders": "https://www.mrrb.bg",
+    "avtomagistrali_tenders": "https://avtomagistrali.com",
 }
 
 

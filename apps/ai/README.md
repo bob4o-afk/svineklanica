@@ -100,6 +100,45 @@ uv run analyze --sphere police
 uv run analyze-one --sphere police --source mvr_donations --natural-key <key>
 ```
 
+## Government sphere flows (per category)
+
+For `правителство`, records are routed to one of five category flows:
+
+| Flow | Category | Sources | Agents |
+|------|----------|---------|--------|
+| `procurement` | обществена поръчка | gov_tenders | spec_rigging, scope, lifecycle, entity, collusion |
+| `jobs` | конкурси за работа | gov_jobs | rigged_competition, conflict_kinship, entity |
+| `audits` | одити | gov_audits | audit_findings |
+| `gov_declarations` | имуществени декларации | gov_declarations | gov_official_wealth, conflict_kinship |
+| `concessions` | концесии | gov_concessions | concession_abuse, scope, lifecycle |
+
+Routing: source id map → payload category → heuristics → LLM `government_category_router` fallback.
+
+```bash
+uv run analyze --sphere government
+uv run analyze-one --sphere government --source gov_declarations --natural-key <key>
+```
+
+## Roads sphere flows (per category)
+
+For `пътно строителство`, records are routed to one of three category flows:
+
+| Flow | Category | Sources | Agents |
+|------|----------|---------|--------|
+| `procurement` | обществена поръчка | api_tenders, mrrb_tenders, avtomagistrali_tenders | spec_rigging, scope, lifecycle, entity, collusion |
+| `jobs` | конкурси за работа | api_jobs | rigged_competition, conflict_kinship, entity |
+| `projects` | инфраструктурни проекти | api_projects | project_abuse, scope, lifecycle, entity |
+
+Cross-cutting sources (`ted`, `caiseop`, …) with CPV `45233*` and `sphere=пътно строителство` route to `procurement`; project-shaped records route to `projects`.
+
+Routing: source id map → payload category → heuristics → LLM `roads_category_router` fallback.
+
+```bash
+uv run analyze --sphere roads
+uv run analyze-one --sphere roads --source api_projects --natural-key <key>
+echo '<IngestRecord json>' | uv run analyze-one --stdin --sphere roads
+```
+
 ## Run
 
 ```bash

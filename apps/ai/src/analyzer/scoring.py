@@ -34,6 +34,9 @@ from .schemas import (
     FLAG_TAILORED_SPEC,
     FLAG_THRESHOLD_MANIPULATION,
     FLAG_UNDERVALUED_SALE,
+    FLAG_AUDIT_FINDING,
+    FLAG_CONCESSION_ABUSE,
+    FLAG_PROJECT_ABUSE,
     FLAG_UNEXPLAINED_WEALTH,
     LEVEL_CORRUPTION,
     LEVEL_HIGH,
@@ -68,6 +71,10 @@ DEFAULT_FAMILY_WEIGHTS: dict[str, float] = {
     "conflict": 1.3,
     "wealth": 1.4,
     "donations": 1.3,
+    "audits": 1.3,
+    "concessions": 1.3,
+    "gov_wealth": 1.4,
+    "projects": 1.3,
 }
 
 # Logistic calibration (normalized so linear==0 -> score 0).
@@ -142,6 +149,18 @@ _KEY_TO_FLAG: dict[str, str] = {
     "in_kind_donation": FLAG_DONOR_INFLUENCE,
     "missing_donor": FLAG_DONOR_INFLUENCE,
     "round_donation": FLAG_DONOR_INFLUENCE,
+    "audit_findings_llm": FLAG_AUDIT_FINDING,
+    "repeat_audited_entity": FLAG_AUDIT_FINDING,
+    "critical_audit_keywords": FLAG_AUDIT_FINDING,
+    "gov_official_wealth_llm": FLAG_UNEXPLAINED_WEALTH,
+    "missing_official": FLAG_UNEXPLAINED_WEALTH,
+    "duplicate_official_filings": FLAG_UNEXPLAINED_WEALTH,
+    "concession_abuse_llm": FLAG_CONCESSION_ABUSE,
+    "project_abuse_llm": FLAG_PROJECT_ABUSE,
+    "repeat_project_entity": FLAG_PROJECT_ABUSE,
+    "stalled_project_keywords": FLAG_PROJECT_ABUSE,
+    "perpetual_construction": FLAG_PROJECT_ABUSE,
+    "thin_project_payload": FLAG_PROJECT_ABUSE,
 }
 
 
@@ -243,6 +262,18 @@ def _hard_trip(view: TenderView, by_key: dict[str, Signal]) -> tuple[bool, float
         return True, 99.0, "Повтарящ се дарител с високо съмнение за необосновано влияние (pay-to-play)."
     if has("donation_influence_llm", 0.85) and has("quid_pro_quo_llm", 0.5):
         return True, 99.0, "Дарение с документирана quid-pro-quo връзка към поръчка/договор."
+    if has("audit_findings_llm", 0.85) and has("repeat_audited_entity", 0.35):
+        return True, 99.0, "Тежки одитни констатации срещу повтаряща се институция."
+    if has("concession_abuse_llm", 0.85) and has("single_bidder", 0.4):
+        return True, 99.0, "Злоупотреба при концесия с един кандидат."
+    if has("gov_official_wealth_llm", 0.85) and has("late_declaration", 0.3):
+        return True, 99.0, "Необяснимо имущество на ВДЛ с късно подадена декларация."
+    if has("implausible_scope_llm", 0.85) and has("single_bidder", 0.4):
+        return True, 99.0, "Нереалистичен обхват при един участник — типичен пътен ремонт/надценяване."
+    if has("project_abuse_llm", 0.85) and has("repeat_project_entity", 0.35):
+        return True, 99.0, "Повтарящ се застинал проект с потвърден LLM модел на злоупотреба."
+    if has("project_abuse_llm", 0.85) and has("stalled_project_keywords", 0.4):
+        return True, 99.0, "Документирано замразяване/забавяне + потвърдена злоупотреба при проект."
     return False, 0.0, ""
 
 

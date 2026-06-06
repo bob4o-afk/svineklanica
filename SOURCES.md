@@ -51,6 +51,26 @@ Run: `uv run scrape --source <x>` (or `--all`). List: `uv run scrape --list`.
 | **mvr_jobs** | МВР Конкурси | Job competitions in MVR | HTML | job id / hash | Public profile ✅ |
 | **mvr_assets** | МВР Активи | Sale of state assets/real estate | HTML | auction id / hash | Public profile ✅ |
 
+### 🏛️ Правителство (government flow)
+
+| id | Source | What we pull | Format | natural_key | Access / notes |
+|----|--------|--------------|--------|-------------|----------------|
+| **gov_tenders** | Министерски съвет | Council of Ministers procurement | HTML | procedure id / hash | government.bg ✅ |
+| **gov_jobs** | ИИСДА | Central administration job competitions | HTML | job id / hash | iisda.government.bg ✅ |
+| **gov_audits** | Сметна палата | State Audit Office reports | HTML | audit id / hash | bulnao.government.bg ✅ |
+| **gov_declarations** | КПКОНПИ | High-level official property declarations | HTML table | row hash | register.antikorupcia.bg ✅ |
+| **gov_concessions** | НКР | National Concession Register | HTML | concession id / hash | nkr.government.bg ✅ |
+
+### 🛣️ Пътно строителство (roads flow)
+
+| id | Source | What we pull | Format | natural_key | Access / notes |
+|----|--------|--------------|--------|-------------|----------------|
+| **api_tenders** | АПИ | Road Infrastructure Agency procurement | HTML | procedure id / hash | api.bg ✅ |
+| **api_jobs** | АПИ Конкурси | Job competitions in API | HTML | job id / hash | api.bg ✅ |
+| **api_projects** | АПИ Проекти | Major infrastructure projects | HTML | project id / hash | api.bg ✅ |
+| **mrrb_tenders** | МРРБ | Ministry of Regional Development procurement | HTML | procedure id / hash | mrrb.bg ✅ |
+| **avtomagistrali_tenders** | Автомагистрали ЕАД | State-owned road company procurement | HTML | procedure id / hash | avtomagistrali.com ✅ |
+
 ### 🏛️ Cross-cutting (all spheres)
 
 | id | Source | What we pull | Format | natural_key | Access / notes |
@@ -156,6 +176,32 @@ Run: `uv run analyze --sphere police`.
 | `donations` | дарения за МВР | mvr_donations | Donor influence, pay-to-play, repeat donors |
 
 Routing: source id → payload category → heuristics → LLM `police_category_router`.
+
+### Government AI flows (`правителство`)
+
+Run: `uv run analyze --sphere government`.
+
+| flow_key | category | Primary sources | Focus |
+|----------|----------|-----------------|-------|
+| `procurement` | обществена поръчка | gov_tenders | Spec rigging, collusion, lifecycle |
+| `jobs` | конкурси за работа | gov_jobs | Rigged competitions, kinship/conflict |
+| `audits` | одити | gov_audits | Financial mismanagement, audit findings |
+| `gov_declarations` | имуществени декларации | gov_declarations | Unexplained wealth, high-level official filings |
+| `concessions` | концесии | gov_concessions | Pay-to-play, long-term state contracts |
+
+Routing: source id → payload category → heuristics → LLM `government_category_router`.
+
+### Road Construction AI flows (`пътно строителство`)
+
+Run: `uv run analyze --sphere roads`.
+
+| flow_key | category | Primary sources | Focus |
+|----------|----------|-----------------|-------|
+| `procurement` | обществена поръчка | api_tenders, mrrb_tenders, avtomagistrali_tenders | Spec rigging, collusion, lifecycle |
+| `jobs` | конкурси за работа | api_jobs | Rigged competitions, kinship/conflict |
+| `projects` | инфраструктурни проекти | api_projects | Project delays, funding anomalies |
+
+Routing: source id → payload category → heuristics → LLM `roads_category_router`.
 
 ## Conventions
 
