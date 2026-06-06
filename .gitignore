@@ -29,6 +29,16 @@ node_modules/
 caddy_data/
 caddy_config/
 
+# Local scratch / working notes (not a deliverable)
+/todo/
+
+# Secret-bearing scratch files — NEVER commit (private keys, passwords)
+temp_env.txt
+*_env.txt
+*.pem
+id_ed25519*
+id_rsa*
+
 # Editor / OS
 .DS_Store
 Thumbs.db

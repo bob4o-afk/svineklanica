@@ -119,6 +119,7 @@ Each detector turns a real pattern of abuse into a visible, sourced signal. Prio
 - **Legal/ethical guardrail:** public data + authorized targets only. If a task drifts toward unauthorized access, **stop and flag it.**
 - **Keep `main` demo-able at all times**; cache a real-data snapshot so a dead upstream can't kill the pitch.
 - **Add the OSS `LICENSE` before the demo.**
+- **Common commands live in [`commands.txt`](commands.txt)** (repo root) — build/up, migrate, seed, **tests (always the isolated `liberhack_test` DB)**, `ingest:run`, route inspection, type-sync. Pull commands from there; keep it updated when a workflow changes. **Never run bare `php artisan test` in the dev container** — it migrate:fresh-wipes the dev DB; use `make test-be` or the `-e DB_DATABASE=liberhack_test` form.
 - We'll add `skills/` and tighten these rules as the project takes shape. This file + `.claude/rules/` are the living contract.
 
 ---

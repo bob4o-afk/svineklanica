@@ -9,6 +9,7 @@ use Tests\TestCase;
 pest()->extend(TestCase::class)->in('Unit');
 
 // Feature tests (root + every module) hit a REAL Postgres (backend.md §13).
+// Cache isolation (array store per test) is enforced in TestCase::setUp.
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature', __DIR__.'/../modules');

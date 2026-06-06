@@ -45,7 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        # pgvector image so migrations' `CREATE EXTENSION vector` succeeds (backend.md §12).
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_DB: liberhack_test
           POSTGRES_USER: liberhack

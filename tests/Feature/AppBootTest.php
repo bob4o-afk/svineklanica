@@ -12,3 +12,12 @@ it('runs against an isolated test database with pgvector', function () {
     $extension = DB::selectOne("SELECT extname FROM pg_extension WHERE extname = 'vector'");
     expect($extension?->extname)->toBe('vector');
 });
+
+it('sets security headers on every response (security.md §8)', function () {
+    $this->getJson('/api/version')
+        ->assertOk()
+        ->assertHeader('X-Content-Type-Options', 'nosniff')
+        ->assertHeader('X-Frame-Options', 'DENY')
+        ->assertHeader('Referrer-Policy')
+        ->assertHeader('Content-Security-Policy');
+});

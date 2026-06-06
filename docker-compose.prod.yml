@@ -65,7 +65,9 @@ services:
       - "80"
 
   db:
-    image: postgres:16-alpine
+    # pgvector-enabled Postgres 16 (backend.md §12 — vector search + detectors).
+    # For real scale, swap for a managed Postgres that has the pgvector extension.
+    image: pgvector/pgvector:pg16
     restart: always
     environment:
       POSTGRES_DB: ${DB_DATABASE}

@@ -65,6 +65,18 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Security events are FIRST-CLASS (security.md §11): every auto-ban and
+        // honeypot hit lands here, on its own file, so monitoring/alerting can
+        // tail it independently of app noise. Being attacked is an event we want
+        // to SEE, not discover later.
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/security.log'),
+            'level' => env('SECURITY_LOG_LEVEL', 'info'),
+            'days' => env('SECURITY_LOG_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
