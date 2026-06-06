@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import about from './locales/bg/about.json';
+import admin from './locales/bg/admin.json';
 import common from './locales/bg/common.json';
 import entity from './locales/bg/entity.json';
 import errors from './locales/bg/errors.json';
@@ -15,14 +16,14 @@ import viz from './locales/bg/viz.json';
 export const defaultNS = 'common';
 
 export const resources = {
-  bg: { common, home, feed, flags, post, errors, about, entity, search, sectors, viz },
+  bg: { common, home, feed, flags, post, errors, about, entity, search, sectors, viz, admin },
 } as const;
 
 void i18n.use(initReactI18next).init({
   lng: 'bg',
   fallbackLng: 'bg',
   defaultNS,
-  ns: ['common', 'home', 'feed', 'flags', 'post', 'errors', 'about', 'entity', 'search', 'sectors', 'viz'],
+  ns: ['common', 'home', 'feed', 'flags', 'post', 'errors', 'about', 'entity', 'search', 'sectors', 'viz', 'admin'],
   resources,
   interpolation: { escapeValue: false },
   returnNull: false,
