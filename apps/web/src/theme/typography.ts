@@ -1,22 +1,25 @@
 import type { ThemeOptions } from '@mui/material/styles';
 
-/** JetBrains Mono for the punk edge (wordmark/headings/numbers); Inter for readable
- *  Bulgarian body text. Both self-hosted via @fontsource (CSP/offline-friendly). */
+/** Three-voice type system:
+ *  - display (Manrope 800): headings, wordmark, hero — bold with full Cyrillic
+ *  - mono (JetBrains Mono): data labels, meta, nav links, overlines — technical layer
+ *  - sans (Inter): body text — readable at length
+ *  All self-hosted via @fontsource (CSP/offline-friendly). */
 export const fonts = {
+  display: '"Manrope", system-ui, -apple-system, sans-serif',
   mono: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
   sans: '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
 } as const;
 
 export const typography: NonNullable<ThemeOptions['typography']> = {
   fontFamily: fonts.sans,
-  // Long Bulgarian words (e.g. "Прозрачността") must break rather than overflow the viewport
-  // at phone widths — break only when a word can't fit (overflow-wrap, not word-break).
-  h1: { fontFamily: fonts.mono, fontWeight: 700, letterSpacing: '-0.02em', overflowWrap: 'break-word' },
-  h2: { fontFamily: fonts.mono, fontWeight: 700, letterSpacing: '-0.01em', overflowWrap: 'break-word' },
-  h3: { fontFamily: fonts.mono, fontWeight: 700, overflowWrap: 'break-word' },
-  h4: { fontFamily: fonts.mono, fontWeight: 700, overflowWrap: 'break-word' },
-  h5: { fontFamily: fonts.mono, fontWeight: 600, overflowWrap: 'break-word' },
-  h6: { fontFamily: fonts.mono, fontWeight: 600, overflowWrap: 'break-word' },
-  overline: { fontFamily: fonts.mono, fontWeight: 600, letterSpacing: '0.08em' },
+  // Long Bulgarian words must break rather than overflow at phone widths.
+  h1: { fontFamily: fonts.display, fontWeight: 800, letterSpacing: '-0.02em', overflowWrap: 'break-word' },
+  h2: { fontFamily: fonts.display, fontWeight: 800, letterSpacing: '-0.02em', overflowWrap: 'break-word' },
+  h3: { fontFamily: fonts.display, fontWeight: 700, letterSpacing: '-0.01em', overflowWrap: 'break-word' },
+  h4: { fontFamily: fonts.display, fontWeight: 700, overflowWrap: 'break-word' },
+  h5: { fontFamily: fonts.display, fontWeight: 700, overflowWrap: 'break-word' },
+  h6: { fontFamily: fonts.display, fontWeight: 700, overflowWrap: 'break-word' },
+  overline: { fontFamily: fonts.mono, fontWeight: 600, letterSpacing: '0.12em' },
   button: { textTransform: 'none', fontWeight: 600 },
 };

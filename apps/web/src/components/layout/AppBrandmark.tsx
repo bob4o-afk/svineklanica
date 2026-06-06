@@ -1,45 +1,53 @@
 import { Box, Stack, Typography } from '@mui/material';
 import { BRAND } from '@/config/brand';
+import { useColorMode } from '@/hooks/useColorMode';
 import { fonts } from '@/theme/typography';
+import { palette } from '@/theme/tokens';
+
+// Eye-only logos — compact enough for the header.
+import blackEyeRed from '@/assets/logos/black_eye_red.svg';
+import whiteEyeRed from '@/assets/logos/white_eye_red.svg';
 
 export interface AppBrandmarkProps {
-  showTagline?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  /** Height of the eye icon in px. */
+  height?: number;
 }
 
-const FONT_SIZES: Record<NonNullable<AppBrandmarkProps['size']>, string> = {
-  sm: '1rem',
-  md: '1.25rem',
-  lg: '1.75rem',
-};
+/** Header wordmark: eye logo + split brand name (СВИНЕ white / КЛАННИЦА red). */
+export function AppBrandmark({ height = 32 }: AppBrandmarkProps) {
+  const { mode } = useColorMode();
+  const isDark = mode === 'dark';
+  const src = isDark ? whiteEyeRed : blackEyeRed;
 
-/** The wordmark: an accent block (acid in dark, ink in light) + the mono BRAND name. The display identity lives in
- *  config/brand.ts; this is the only place that paints it. */
-export function AppBrandmark({ showTagline = false, size = 'md' }: AppBrandmarkProps) {
+  const [first, second] = BRAND.nameParts;
+
   return (
     <Stack direction="row" spacing={1} alignItems="center">
-      <Box aria-hidden sx={{ width: 14, height: 14, bgcolor: 'primary.main', flexShrink: 0 }} />
-      <Box>
-        <Typography
-          component="span"
-          sx={{
-            display: 'block',
-            fontFamily: fonts.mono,
-            fontWeight: 700,
-            fontSize: FONT_SIZES[size],
-            lineHeight: 1,
-            letterSpacing: '-0.02em',
-            textTransform: 'uppercase',
-          }}
-        >
-          {BRAND.name}
-        </Typography>
-        {showTagline ? (
-          <Typography component="span" variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-            {BRAND.tagline}
-          </Typography>
-        ) : null}
-      </Box>
+      <Box
+        component="img"
+        src={src}
+        alt=""
+        aria-hidden
+        sx={{ height, width: 'auto', display: 'block', userSelect: 'none', flexShrink: 0 }}
+      />
+      <Typography
+        component="span"
+        sx={{
+          fontFamily: fonts.display,
+          fontWeight: 800,
+          fontSize: height * 0.5,
+          lineHeight: 1,
+          letterSpacing: '-0.02em',
+          textTransform: 'uppercase',
+          userSelect: 'none',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {first}
+        <Box component="span" sx={{ color: palette.alarm }}>
+          {second}
+        </Box>
+      </Typography>
     </Stack>
   );
 }

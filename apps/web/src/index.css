@@ -1,5 +1,8 @@
 /* Tailwind layers. Preflight is OFF (tailwind.config) so MUI/Emotion owns the CSS baseline;
-   Tailwind only contributes utility classes scoped to #root (frontend.md §1). */
+   Tailwind contributes layout/spacing utilities only — scoped to #root (frontend.md §1).
+   Visual punk effects (grain, glitch, watermark, animations) live in punk.css. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@import './punk.css';

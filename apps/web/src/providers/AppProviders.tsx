@@ -1,7 +1,8 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { type ReactNode, useMemo } from 'react';
+import { type ReactNode, Suspense, useMemo } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
+import { AppLoadingScreen } from '@/components/feedback/AppLoadingScreen';
 import { makeQueryClient } from '@/config/queryClient';
 import i18n from '@/i18n';
 import { AnalyticsProvider } from './AnalyticsProvider';
@@ -21,7 +22,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
               <ToastProvider>
-                <AnalyticsProvider>{children}</AnalyticsProvider>
+                <AnalyticsProvider>
+                  <Suspense fallback={<AppLoadingScreen />}>{children}</Suspense>
+                </AnalyticsProvider>
               </ToastProvider>
             </AuthProvider>
           </QueryClientProvider>

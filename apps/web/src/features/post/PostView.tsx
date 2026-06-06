@@ -1,6 +1,7 @@
-import { Divider, Stack, Typography } from '@mui/material';
+import { Chip, Divider, Stack, Typography } from '@mui/material';
 import { ArrowLeftIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
+import { Link as RouterLink } from 'react-router-dom';
 import { AppButton } from '@/components/controls/AppButton';
 import { AppErrorState } from '@/components/feedback/AppErrorState';
 import { AppSkeleton } from '@/components/feedback/AppSkeleton';
@@ -63,6 +64,37 @@ export function PostView({ publicId }: PostViewProps) {
           {t('post:explanation')}
         </Typography>
         <Typography variant="body1">{flag.explanation_bg}</Typography>
+      </section>
+
+      <Divider />
+
+      <section>
+        <Typography variant="h6" component="h2" gutterBottom>
+          {t('post:subject')}
+        </Typography>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {flag.subject.authority !== undefined ? (
+            <Chip
+              component={RouterLink}
+              to={paths.authority(flag.subject.authority.public_id)}
+              clickable
+              variant="outlined"
+              label={flag.subject.authority.name}
+            />
+          ) : null}
+          {flag.subject.company !== undefined ? (
+            <Chip
+              component={RouterLink}
+              to={paths.company(flag.subject.company.eik)}
+              clickable
+              variant="outlined"
+              label={flag.subject.company.name}
+            />
+          ) : null}
+          {flag.subject.tender !== undefined ? (
+            <Chip variant="outlined" label={flag.subject.tender.title} />
+          ) : null}
+        </Stack>
       </section>
 
       <Divider />
