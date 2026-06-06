@@ -50,7 +50,7 @@ export default defineConfig({
       // Never run the PWA service worker in dev — it would fight MSW's mock worker for control
       // of the page and make /api/* requests fall through (404). PWA is a production concern.
       devOptions: { enabled: false },
-      includeAssets: ['favicon.svg', 'robots.txt'],
+      includeAssets: ['favicon.svg', 'robots.txt', 'apple-touch-icon-180x180.png'],
       manifest: {
         name: BRAND.name,
         short_name: BRAND.short,
@@ -60,8 +60,14 @@ export default defineConfig({
         background_color: palette.ink,
         display: 'standalone',
         start_url: '/',
-        // SVG icon scales to every size; PNG/maskable set is a Phase-5 polish.
-        icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
+        // Raster icons (generated from favicon.svg via `pnpm gen:icons`) for installability +
+        // a maskable variant for Android adaptive icons; the SVG stays as the scalable fallback.
+        icons: [
+          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+        ],
       },
     }),
   ],

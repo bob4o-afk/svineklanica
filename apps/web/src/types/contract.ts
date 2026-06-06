@@ -31,6 +31,10 @@ export type ProcurementSector =
   | 'supplies'
   | 'other';
 
+/** Editorial "punk" tags (CLAUDE.md §1.0.1) — the savage plain-Bulgarian roast layer an admin
+ *  assigns on publish, on TOP of the computed type/sector/severity. Display labels live in i18n. */
+export type PunkTag = 'theft' | 'dodgy_deal' | 'shushi_mushi';
+
 export interface SourceRef {
   url: string;
   label: string;
@@ -90,6 +94,8 @@ export interface FlagPost {
   published_at?: string;
   /** Present on price_discrepancy flags — links to the product's price-over-time series. */
   series_key?: string;
+  /** Editorial punk tags assigned on publish (CLAUDE.md §1.0.1) — the roast on top of the data. */
+  tags?: PunkTag[];
 }
 
 export interface Paginated<T> {
@@ -207,4 +213,6 @@ export interface ReviewDecision {
   title?: string;
   explanation_bg?: string;
   note?: string;
+  /** Punk tags to attach on approval (CLAUDE.md §1.0.1). */
+  tags?: PunkTag[];
 }
