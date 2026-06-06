@@ -13,7 +13,7 @@ export interface AppBrandmarkProps {
   height?: number;
 }
 
-/** Header wordmark: eye logo + split brand name (СВИНЕ white / КЛАННИЦА red). */
+/** Header wordmark: eye logo + split brand name (СВИНЕ white / КЛАНИЦА red). */
 export function AppBrandmark({ height = 32 }: AppBrandmarkProps) {
   const { mode } = useColorMode();
   const isDark = mode === 'dark';

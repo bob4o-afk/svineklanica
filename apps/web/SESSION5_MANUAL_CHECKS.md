@@ -34,7 +34,7 @@ if that port is busy — read the line Vite prints).
 ## C2. PWA install (Phase 5) — best on a real phone / a `pnpm build && pnpm preview`
 > The PWA service worker is **disabled in `dev`** (it fights MSW) — to truly test install, run
 > `corepack pnpm -C apps/web build && corepack pnpm -C apps/web preview` and open the preview URL.
-- [ ] **Desktop Chrome/Edge:** an install icon appears in the address bar → install → it opens in its own window with the eye logo, name „СВИНЕКЛАННИЦА".
+- [ ] **Desktop Chrome/Edge:** an install icon appears in the address bar → install → it opens in its own window with the eye logo, name „СВИНЕКЛАНИЦА".
 - [ ] **Android Chrome:** „Add to Home screen" / install banner; the home-screen icon is the **maskable** eye (fills the adaptive shape, not letterboxed).
 - [ ] **iOS Safari:** an in-app hint banner „Инсталирай Свинекланица" with the Share glyph appears automatically (iOS has no native prompt); following it — Share ▸ Add to Home Screen → the home icon is the eye (apple-touch-icon), opens fullscreen.
 - [ ] **In-app banner:** on an install-eligible browser a bottom banel „Инсталирай Свинекланица" shows with an „Инсталирай" button + „×" dismiss; dismiss hides it and it doesn't nag again (localStorage). Verified both light/dark already.
