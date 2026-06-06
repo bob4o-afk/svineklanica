@@ -93,8 +93,9 @@ jobs:
             sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${TAG}/" .env.prod || echo "IMAGE_TAG=${TAG}" >> .env.prod
             docker compose pull
 
-            # Infra first (no-op if already running).
-            docker compose up -d --no-deps db redis
+            # Infra first; --wait BLOCKS until the Postgres healthcheck passes, so the
+            # migration below doesn't race a still-starting DB ("connection refused").
+            docker compose up -d --wait db redis
 
             # Migrate with the NEW image, before swapping the app in (keep migrations
             # backward-compatible so the old container still works during the overlap).
