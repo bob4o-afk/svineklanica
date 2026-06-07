@@ -11,6 +11,9 @@ use Modules\Presentation\Data\AuthorityRefData;
 use Modules\Presentation\Data\CompanyRefData;
 use Modules\Presentation\Data\SearchResultsData;
 use Modules\Presentation\Data\TenderRefData;
+use Modules\Procurement\Models\Company;
+use Modules\Procurement\Models\ContractingAuthority;
+use Modules\Procurement\Models\Tender;
 
 /**
  * The "AI search agent" behind the citizen search box (CLAUDE.md §1.2): it maps a
@@ -40,7 +43,7 @@ final class SearchService
     }
 
     /**
-     * @return array{0: Collection<int, \Modules\Procurement\Models\ContractingAuthority>, 1: Collection<int, \Modules\Procurement\Models\Company>, 2: Collection<int, \Modules\Procurement\Models\Tender>}
+     * @return array{0: Collection<int, ContractingAuthority>, 1: Collection<int, Company>, 2: Collection<int, Tender>}
      */
     private function resolve(string $q, int $perType): array
     {
@@ -68,7 +71,7 @@ final class SearchService
     }
 
     /**
-     * @return array{0: Collection<int, \Modules\Procurement\Models\ContractingAuthority>, 1: Collection<int, \Modules\Procurement\Models\Company>, 2: Collection<int, \Modules\Procurement\Models\Tender>}
+     * @return array{0: Collection<int, ContractingAuthority>, 1: Collection<int, Company>, 2: Collection<int, Tender>}
      */
     private function keyword(string $q, int $perType): array
     {

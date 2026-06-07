@@ -6,6 +6,7 @@ namespace Modules\Procurement\Actions;
 
 use App\Support\Google\GoogleAiClient;
 use App\Support\Logging\LoggingService;
+use Illuminate\Database\Eloquent\Model;
 use Modules\Procurement\Data\EmbedSummary;
 use Modules\Procurement\Models\Company;
 use Modules\Procurement\Models\ContractingAuthority;
@@ -95,9 +96,9 @@ final class EmbedRecordsAction
     }
 
     /**
-     * @param  class-string<\Illuminate\Database\Eloquent\Model>  $modelClass
+     * @param  class-string<Model>  $modelClass
      * @param  list<string>  $with
-     * @param  callable(\Illuminate\Database\Eloquent\Model): string  $textFor
+     * @param  callable(Model): string  $textFor
      */
     private function embed(string $modelClass, array $with, string $column, callable $textFor, string $type, ?int $limit): EmbedSummary
     {
