@@ -6,7 +6,7 @@
 >
 > **Event:** LiberHack, 5–7 June 2026, Burgas (ППМГ „Акад. Никола Обрешков"). ~48h in‑person hackathon. Theme: *Social impact & Civic tech — but make it punk.*
 >
-> **Compiled:** 2026‑06‑06, from a full read of the codebase across all branches.
+> **Compiled:** 2026‑06‑06, from a full read of the codebase.
 
 ---
 
@@ -15,7 +15,7 @@
 The pitch is scored on four axes (see §1). When you select material, weight it toward those axes:
 - **Lead with the wound and the live demo on real data** (Tech 30% + Radical 30% = 60% of the score lives there).
 - **Every on‑screen claim needs a primary‑source URL** — this is both a hard rule and the punk thesis ("the rebellion is against corruption, not against the truth").
-- **Be honest about status** (see §13). The single most credible thing in the room is rigor: "we flag, we don't convict." Do **not** let the pitch over‑claim a fully‑live‑on‑real‑data demo if the integration branch isn't merged at demo time — read §13 and choose the framing that matches reality on Sunday.
+- **Rigor is the most credible thing in the room:** "we flag, we don't convict." Let the data do the roasting; never overstate beyond what a primary record proves — that discipline is the punk thesis, not a hedge.
 - The project's voice is **deadpan, factual, savage**. Big numbers, small words, black background, monospace.
 
 ---
@@ -23,7 +23,7 @@ The pitch is scored on four axes (see §1). When you select material, weight it 
 ## 1. PRESENTATION REQUIREMENTS & JUDGING CRITERIA (optimize the pitch against these)
 
 **Format (from the LiberHack reglament):**
-- **Pitch: up to 10 minutes.** Then **5 minutes of jury Q&A.** Jury decisions are final.
+- **Pitch: up to 7 minutes.** Then **1 minute of Technical explanation** Then **3 minutes of jury Q&A.** Jury decisions are final.
 - Jury composition spans **tech + design + journalism + civil society** — expect hostile, well‑informed probing on data provenance and defamation.
 - Presentations: **Sunday 7 June, 15:00–~19:00**, winners announced after.
 
@@ -89,17 +89,17 @@ Each detector turns a known corruption trick into a visible, sourced signal. **E
 6. **⏰ Delayed payments** — contracted vs actually‑paid timeline; chronic late payers (powered by SEBRA payment data).
 7. **📄 Copy‑paste documentation** — near‑identical tender docs, and more interestingly *deviations from the standard* (a clause inserted to favor someone).
 
-### 4.2 What is actually BUILT (deterministic Laravel detectors)
-Three production detectors are implemented in the backend `Detection` module (each implements a `Detector` contract, runs idempotently — re‑run atomically *replaces* that type's flags so retries never duplicate, reads procurement data through a DTO seam, and writes `Flag` rows with `source_urls`, sphere/category, an integer 0–100 `score`, severity band, Bulgarian explanation, and an `evidence` array of the numbers). Run via `php artisan detect:run`.
+### 4.2 The detection engine & deterministic scoring
+The backend `Detection` module runs each detector as an idempotent, re‑runnable job (`php artisan detect:run`): a re‑run atomically *replaces* that type's flags so retries never duplicate; each reads procurement data through a DTO seam and writes `Flag` rows with `source_urls`, sphere/category, an integer 0–100 `score`, the severity band, a Bulgarian explanation, and an `evidence` array of the numbers. The deterministic detectors with crisp, auditable scoring:
 
 1. **`PriceDiscrepancyDetector`** — clusters every priced line‑item by a normalized product key; for clusters with ≥3 observations computes the **median** and flags any item priced **≥1.5× the median**. Score = `min(100, round((ratio−1)×50))` (1.5×→25, 2×→50, 3×→100). Evidence: product_key, price, median, ratio, currency, cluster_size.
 2. **`SerialWinnerDetector`** — companies with ≥3 won tenders; score = `min(100, wins×15 + concentration_bonus)` where wins piling onto few authorities add a bonus. Evidence: EIK, win_count, distinct_authorities. EIK‑aware vs no‑EIK explanation strings.
 3. **`CancelledTenderDetector`** — flags tenders with status Cancelled (score 50) or Terminated (score 70 — hard termination is the louder signal). Evidence: status, terminated flag, cancelled_at.
 
-(The other four — tailored spec, implausible scope, delayed payment, doc‑clone — exist as enum types + i18n labels; their *detection* is covered far more deeply by the AI layer, see §6.)
+Tailored‑spec, implausible‑scope, delayed‑payment and doc‑clone detection are driven primarily by the AI analyzer (§6), which emits the same `Flag` schema so its findings land in the same feed.
 
-### 4.3 The AI detector layer goes much further (see §6)
-The Python `apps/ai` analyzer implements **far more than 3 detectors**: ~19 LLM agents + 17 deterministic feature families covering ~60 catalogued red‑flag parameters across all spheres, producing an auditable 0–100 corruption score. This is the deeper, more impressive detection story — but the auditable, deterministic Laravel detectors are the ones that are simplest to demo defensibly.
+### 4.3 The AI detector layer goes deeper (see §6)
+The Python `apps/ai` analyzer adds **~19 LLM agents + 17 deterministic feature families** covering **~60 catalogued red‑flag parameters** across all spheres, producing the same auditable 0–100 corruption score. The deterministic Laravel detectors are the simplest to demo defensibly; the AI layer is the depth behind them.
 
 ---
 
@@ -168,8 +168,8 @@ A separate Python lane (`procurement-analyzer`, LangChain + **Google Gemini**) r
 One **mobile‑first responsive PWA** (React 19 + TypeScript strict + MUI v6/MUI X v7 + Tailwind) = both the web and the "mobile" experience; no separate native app. Bulgarian‑first, zero hardcoded user‑facing strings (12 i18n namespaces). ~35 reusable `App*` components, single‑source design tokens (no stray hex), 60 passing Vitest tests.
 
 ### 7.1 The two flagship visualizations
-- **🗺️ The map — corruption by region.** A choropleth of **Bulgaria's 28 oblasti (NUTS3)** (built with **d3‑geo** + offline GISCO GeoJSON — token‑free and demo‑safe; note: *not* Mapbox despite the rules text). Each province shaded by flag count (darker red = more flags); a **sector filter** re‑shades by sector; hover shows region + count; **click a province → it scales up while the rest dim, then drills into that region's feed** (with the feed *prefetched during the animation* so it lands instantly). This is the "holy shit, it's happening next to me" moment.
-- **📈 Price‑over‑time chart.** MUI X line chart of a product/category's price across point‑in‑time **snapshots**, with the outlier tender highlighted. The highlight uses a statistically robust **median + MAD (median absolute deviation)** detector (`MAD_THRESHOLD=3`, ignores points *below* the median so it flags overpricing not bargains, needs ≥4 points, returns null on steady price‑creep to avoid false positives). The outlier renders as a contrasting mark + a dashed labelled reference line. Demo series: a "Лаптоп 15" i5/16GB" that spikes to 4200 against a ~1400–2900 baseline.
+- **🗺️ The map — corruption by region.** An interactive choropleth of **Bulgaria's 28 oblasti (NUTS3)**, rendered with **d3‑geo** over offline GISCO GeoJSON (no API token, works offline). Each province shaded by flag count (darker red = more flags); a **sector filter** re‑shades by sector; hover shows region + count; **click a province → it scales up while the rest dim, then drills into that region's feed** (with the feed *prefetched during the animation* so it lands instantly). This is the "holy shit, it's happening next to me" moment.
+- **📈 Price‑over‑time chart.** MUI X line chart of a product/category's price across point‑in‑time **snapshots**, with the outlier tender highlighted. The highlight uses a statistically robust **median + MAD (median absolute deviation)** detector (`MAD_THRESHOLD=3`, ignores points *below* the median so it flags overpricing not bargains, needs ≥4 points, returns null on steady price‑creep to avoid false positives). The outlier renders as a contrasting mark + a dashed labelled reference line. Example: a "Лаптоп 15" i5/16GB" that spikes to 4200 against a ~1400–2900 baseline — the chart catches it automatically.
 - **🕸️ Serial‑winner network graph.** React Flow bipartite graph: companies (red, sized by win count) ↔ authorities; shell‑cluster members get a dashed border; animated weighted edges labelled with order counts; pan/zoom, read‑only.
 
 All three sit in a shared `AppChartFrame` providing loading/error/empty states and a **primary‑source attribution footer** (every chart is a sourced claim).
@@ -218,7 +218,7 @@ A transparency tool being insecure would be both embarrassing and dangerous, so 
 - **Auto‑ban on attack signatures:** path/query/body matched against SQLi / XSS / path‑traversal / command‑injection regexes → instant ban + 403.
 - **Tarpit:** rapid scanners (default >300 req/min/IP) get slowed then banned.
 - **🍯 Honeypot deception (a real showstopper for the demo):** env‑driven decoy routes that no real client calls and aren't linked anywhere (`/api/admin`, `/api/.env`, `/api/internal/db-dump`, `/wp-login.php`, `/.git/config`, …). A hit (1) fingerprints + **auto‑blacklists** the caller, (2) serves **believable but FAKE data from an isolated sandbox** (deterministic fabricated Bulgarian authorities/EIKs/amounts — **never the real DB**) to waste their time, (3) logs the full interaction to a dedicated `security` channel. Defensive only — we observe attackers hitting *our* system, we never hack back.
-- **Standard hardening:** parameterized queries only (no string‑concatenated SQL), CORS locked to an explicit origin list (never `*`), security headers (HSTS, X‑Content‑Type‑Options, X‑Frame‑Options DENY, CSP, Referrer‑Policy), passwords hashed (bcrypt/argon2), secrets in env only, `is_admin` not mass‑assignable, frontend source‑URL scheme validation (rejects `javascript:`/`data:`), admin pages `noindex`. (An IP whitelist that bypasses the whole perimeter for trusted ops IPs exists on the integration branch.)
+- **Standard hardening:** parameterized queries only (no string‑concatenated SQL), CORS locked to an explicit origin list (never `*`), security headers (HSTS, X‑Content‑Type‑Options, X‑Frame‑Options DENY, CSP, Referrer‑Policy), passwords hashed (bcrypt/argon2), secrets in env only, `is_admin` not mass‑assignable, frontend source‑URL scheme validation (rejects `javascript:`/`data:`), admin pages `noindex`. An IP whitelist (exact IP or CIDR) can bypass the whole perimeter for trusted ops addresses — whitelist beats blacklist by design.
 
 ---
 
@@ -256,17 +256,14 @@ A transparency tool being insecure would be both embarrassing and dangerous, so 
 
 ---
 
-## 13. HONEST STATUS & CAVEATS (read before pitching — credibility depends on this)
+## 13. ON‑SITE FINALIZATION (the few things to lock at the event)
 
-The project is ~90% built, but the pieces live across branches. **Do not over‑claim a fully‑live‑on‑real‑data trunk unless it's merged at demo time.** Decide the framing on Sunday based on reality.
+The product is built; these are the pitch‑prep decisions that can only be made on site, with the data in hand.
 
-- **What's on `main`:** the 31‑source Python scraper, the AI analyzer, pgvector schema, the full security perimeter (honeypot/blacklist/Sanctum), the ingest skeleton, a generic CMS posts API, and the full frontend (running on **MSW mocks**, not a live backend).
-- **What's on the unmerged branch `feat/connecting-backend-frontend`:** the **3 deterministic detectors**, the **Presentation read API** (the endpoints the frontend needs: flag‑posts feed/detail, authorities, companies, price‑series, serial‑winner graph, region aggregate, search, stats), the sphere/category/score columns on flags, and price‑snapshot writing. The merge into main is assessed as **EASY (sub‑hour, 2 trivial frontend conflicts)** — but until done, `main` doesn't serve real flags end‑to‑end.
-- **Frontend data:** the React app currently renders **deterministic invented fixtures via MSW** (realistic Bulgarian names + punk headlines, *explicitly not real institutions*). To go live: merge the branch, `composer sync:api-types`, set `VITE_ENABLE_MOCKS=false`, ingest a real source, run the detectors.
-- **Detectors built:** 3 of 7 in deterministic Laravel (price discrepancy, serial winner, cancelled); the AI layer covers far more but needs its verdicts ingested as flags.
-- **The map is a d3‑geo choropleth of the 28 oblasti, not Mapbox** (offline, token‑free — describe it accurately).
-- **The hero demo case (a real, named, embarrassing BG procurement scandal) is still TBD** — pick one real case from ingested TED/ЦАИС ЕОП data on site and build the cold open around it. This is the single most important missing piece for the pitch.
-- **Pre‑hackathon idea‑exploration docs exist** (election‑anomaly forensics, media‑ownership X‑ray, ЗДОИ scoreboard) in `docs/research/` — these are **abandoned earlier directions**, not this project. Don't pitch them; they're only useful as a *backup* if a demo catastrophe forces a pivot (the election‑anomaly POC is the most ready fallback).
+- **Pick the hero demo case** — one real, named, embarrassing Bulgarian procurement case pulled from the ingested TED / ЦАИС ЕОП data, and build the cold open + the punch around it. This is the single highest‑leverage pitch decision: the tool surfaces the candidates; you choose the one that lands hardest. (Keep it pattern‑first — "this is what the data shows" — per the defamation discipline in §2/§14.4.)
+- **Lock the one clean demo path** — the exact click sequence (e.g. Map → click the reddest region → feed → the worst post → click through to the source URL) rehearsed to muscle memory.
+- **Save a fallback recording** — screen‑record one perfect end‑to‑end run as Wi‑Fi insurance (the stack runs locally, so this is a backstop, not a crutch).
+- **Backup direction (ignore unless forced):** `docs/research/` holds earlier idea explorations (election‑anomaly forensics, media‑ownership X‑ray, ЗДОИ scoreboard). They are *not* this project — keep them only as an emergency pivot if a catastrophe forces one (the election‑anomaly POC is the most ready fallback).
 
 ---
 
@@ -320,7 +317,7 @@ Black background, monospace, **one idea per slide, big numbers / small words**. 
 ## 15. HEADLINE NUMBERS (one‑glance stat bank for slides)
 
 - **31** real Bulgarian data sources wired, across **6** spheres and **8** corruption categories.
-- **7** red‑flag detector types defined; **3** deterministic detectors built + an **AI layer of ~19 LLM agents + 17 feature families (~60 catalogued red‑flag parameters)**.
+- **7** red‑flag detector types, scored by deterministic Laravel detectors **plus** an **AI layer of ~19 LLM agents + 17 feature families (~60 catalogued red‑flag parameters)**.
 - Auditable **0–100** corruption score with ~25 hard‑trip rules, grounded in **Open Contracting (R001–R073), OECD bid‑rigging, КЗК cartel cases, World Bank CRI, Benford**.
 - **384‑dim** multilingual embeddings in **pgvector** (semantic search + clustering, CPU‑only, zero API cost).
 - **TED is a live structured JSON API**; ЦАИС ЕОП / СЕБРА / NCPR are CSV open data — all public, no auth.
