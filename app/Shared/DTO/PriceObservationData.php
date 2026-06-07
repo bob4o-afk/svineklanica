@@ -18,6 +18,7 @@ final readonly class PriceObservationData
         public int $tenderId,
         public string $tenderLabel,
         public string $sourceUrl,
+        public ?string $region,
         public string $productKey,
         public string $description,
         public float $price,

@@ -38,6 +38,7 @@ final class CancelledTenderDetector extends AbstractDetector
                 'subject_type' => 'tender',
                 'subject_id' => $tender->tenderId,
                 'subject_label' => $tender->label,
+                'region_code' => $tender->region,
                 'explanation_bg' => __('detection.cancelled', ['status' => $tender->statusLabel]),
                 'source_urls' => [$tender->sourceUrl],
                 'evidence' => [

@@ -200,6 +200,30 @@ jobs:
             # deploy dir (guaranteed writable by this user, unlike /var/log).
             # grep -v returns 1 when nothing matches, but echo is the subshell's last
             # command so it always exits 0 — `set -e` stays happy.
+            # Self-heal: make sure a cron daemon is actually installed + running, so the
+            # hourly schedule below can fire. Best-effort + fully non-fatal — run via `|| echo`
+            # so `set -e` is suppressed inside the function (bash ignores -e in a tested
+            # context); a VM without sudo or an unknown distro just keeps the on-deploy refresh.
+            ensure_cron() {
+              # Already have a working cron (client + an active daemon)? Nothing to do.
+              if command -v crontab >/dev/null 2>&1 && \
+                 { systemctl is-active --quiet cron 2>/dev/null || systemctl is-active --quiet crond 2>/dev/null \
+                   || pgrep -x cron >/dev/null 2>&1 || pgrep -x crond >/dev/null 2>&1; }; then
+                return 0
+              fi
+              SUDO=""; [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1 && SUDO="sudo"
+              if command -v apt-get >/dev/null 2>&1; then
+                $SUDO apt-get update && $SUDO apt-get install -y cron && $SUDO systemctl enable --now cron
+              elif command -v dnf >/dev/null 2>&1; then
+                $SUDO dnf install -y cronie && $SUDO systemctl enable --now crond
+              elif command -v yum >/dev/null 2>&1; then
+                $SUDO yum install -y cronie && $SUDO systemctl enable --now crond
+              else
+                echo "no known package manager (apt-get/dnf/yum) to install cron"; return 1
+              fi
+            }
+            ensure_cron || echo "WARNING: could not auto-install/enable a cron daemon (no sudo, or unknown distro). On-deploy refresh still ran; the hourly schedule may not fire — see DEPLOY.md §6.1."
+
             CRON_LINE="5 * * * * cd ${{ secrets.DEPLOY_PATH }} && /usr/bin/bash scripts/pipeline.sh >> ${{ secrets.DEPLOY_PATH }}/logs/pipeline-cron.log 2>&1"
             ( crontab -l 2>/dev/null | grep -vF 'scripts/pipeline.sh'; echo "$CRON_LINE" ) | crontab -
             # Verify the cron landed, but DON'T let grep's "no match -> exit 1" fail

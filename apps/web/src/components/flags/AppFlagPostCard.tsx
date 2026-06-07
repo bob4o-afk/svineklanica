@@ -59,10 +59,10 @@ export function AppFlagPostCard({ flag }: AppFlagPostCardProps) {
             ))}
           </Stack>
           <Typography
-            variant="h6"
+            variant="subtitle1"
             component="h3"
             gutterBottom
-            sx={{ fontFamily: fonts.display, fontWeight: 800 }}
+            sx={{ fontFamily: fonts.display, fontWeight: 800, lineHeight: 1.3 }}
           >
             {headline}
           </Typography>
@@ -71,7 +71,7 @@ export function AppFlagPostCard({ flag }: AppFlagPostCardProps) {
               {subject}
             </Typography>
           ) : null}
-          <Typography variant="body2" sx={{ mb: 2, lineHeight: 1.65 }}>
+          <Typography variant="body2" sx={{ mb: 2, fontSize: '0.8125rem', lineHeight: 1.55 }}>
             {flag.explanation_bg}
           </Typography>
           <AppEvidenceList items={flag.evidence} max={2} />

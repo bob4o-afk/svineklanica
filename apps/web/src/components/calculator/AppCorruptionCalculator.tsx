@@ -24,6 +24,8 @@ import { paths } from '@/routes/paths';
 import type { CorruptionTax } from '@/types/api';
 
 const percentFmt = new Intl.NumberFormat('bg-BG', { style: 'percent', maximumFractionDigits: 1 });
+// Bare number (no % sign) for the `resultPercent` i18n string, which already adds its own `%`.
+const percentValueFmt = new Intl.NumberFormat('bg-BG', { maximumFractionDigits: 1 });
 
 /** A typical citizen yearly tax bill in EUR — pre-filled so a result shows on first load. */
 const DEFAULT_TAXES = 800;
@@ -126,7 +128,8 @@ function CalculatorResult({ data, compact }: { data: CorruptionTax; compact: boo
     return <AppEmptyState title={t('empty')} />;
   }
 
-  const percent = percentFmt.format(data.corruption_rate);
+  // `resultPercent` = "{{percent}}% от данъците ти" — it owns the % sign, so pass a bare number.
+  const percent = percentValueFmt.format(data.corruption_rate * 100);
 
   return (
     <Stack spacing={3}>

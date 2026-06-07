@@ -81,6 +81,8 @@ final class VerdictFlagMapper
             'subject_type' => 'tender',
             'subject_id' => $tender->tenderId,
             'subject_label' => $tender->label,
+            // The authority's region code → pins this flag on the map (CLAUDE.md §1.2).
+            'region_code' => $tender->region,
             'title' => $this->resolveTitle($verdict, $tender),
             'explanation_bg' => (string) ($verdict['explanation_bg'] ?? ''),
             'source_urls' => $this->resolveSourceUrls($verdict, $tender),

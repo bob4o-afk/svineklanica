@@ -63,6 +63,7 @@ final class PriceDiscrepancyDetector extends AbstractDetector
                     'subject_type' => 'tender',
                     'subject_id' => $o->tenderId,
                     'subject_label' => $o->tenderLabel,
+                    'region_code' => $o->region,
                     'explanation_bg' => __('detection.price_discrepancy', [
                         'product' => $o->description,
                         'price' => number_format($o->price, 2),

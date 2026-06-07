@@ -19,6 +19,7 @@ final readonly class CancelledTenderData
         public int $tenderId,
         public string $label,
         public string $sourceUrl,
+        public ?string $region,
         public ?Sphere $sphere,
         public ?CorruptionCategory $category,
         public bool $wasTerminated,

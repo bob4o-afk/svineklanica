@@ -27,11 +27,13 @@ final class EloquentProcurementReadRepository implements ProcurementReadPort
         $rows = DB::table('price_snapshots')
             ->join('tender_items', 'price_snapshots.tender_item_id', '=', 'tender_items.id')
             ->join('tenders', 'tender_items.tender_id', '=', 'tenders.id')
+            ->leftJoin('contracting_authorities', 'tenders.contracting_authority_id', '=', 'contracting_authorities.id')
             ->select([
                 'tenders.id as tender_id',
                 'tenders.title as tender_title',
                 'tenders.sphere as sphere',
                 'tenders.category as category',
+                'contracting_authorities.region as region',
                 'price_snapshots.product_key',
                 'price_snapshots.description',
                 'price_snapshots.price',
@@ -44,6 +46,7 @@ final class EloquentProcurementReadRepository implements ProcurementReadPort
             tenderId: (int) $r->tender_id,
             tenderLabel: (string) $r->tender_title,
             sourceUrl: (string) $r->source_url,
+            region: $r->region !== null ? (string) $r->region : null,
             productKey: (string) $r->product_key,
             description: (string) $r->description,
             price: (float) $r->price,
@@ -96,11 +99,13 @@ final class EloquentProcurementReadRepository implements ProcurementReadPort
     {
         return Tender::query()
             ->whereIn('status', [TenderStatus::Cancelled, TenderStatus::Terminated])
+            ->with('authority:id,region')
             ->get()
             ->map(fn (Tender $t): CancelledTenderData => new CancelledTenderData(
                 tenderId: (int) $t->id,
                 label: (string) $t->title,
                 sourceUrl: (string) $t->source_url,
+                region: $t->authority?->region,
                 sphere: $t->sphere,
                 category: $t->category,
                 wasTerminated: $t->status === TenderStatus::Terminated,
