@@ -111,7 +111,10 @@ The analyzer's cost/concurrency caps come from **`.env.prod`** on the VM (used b
 `ai` service's `env_file`), so the auto-run self-limits:
 - **`GOOGLE_API_KEY`** — Gemini key; without it the analyzer runs deterministic-only.
 - **`AGENTS_CAP`** — max **concurrent** agent calls in flight (async ceiling; default 100).
-- **`AGENTS_EVAL_CAP`** — max **total** LLM evaluations per run; `0` = unlimited (default 100).
+- **`AGENTS_EVAL_CAP`** — max **total LLM CALLS** per run (NOT records); `0` = unlimited
+  (default 100). Each record fans out to several agents, so 100 calls ≈ ~25 fully-LLM-scored
+  records; the rest "degrade to deterministic-only" (logged) and are **still ingested**
+  (a deterministic verdict still counts). Raise it (e.g. 300) for more LLM coverage per run.
 - **`SCRAPE_SOURCES`** — (optional) space/comma list of sources for the cron run; defaults
   to `ted`, `off`/`none` disables. The deploy reads it from the repo variable instead.
 
@@ -120,7 +123,10 @@ Run the whole thing by hand on the VM exactly as cron/deploy do:
 cd /opt/liberhack && bash scripts/pipeline.sh           # all sources in SCRAPE_SOURCES
 # …or one stage at a time:
 export COMPOSE_FILE=docker-compose.prod.yml COMPOSE_ENV_FILES=.env.prod
-docker compose --profile tools run --rm scraper uv run scrape --source ted
+# NOTE the --force: a source only scrapes if <SRC>_ENABLED=true in env OR --force is passed.
+# Without it the scraper logs "disabled" and writes 0 records → empty DB. pipeline.sh passes
+# --force for you; pass it yourself when running scrape by hand.
+docker compose --profile tools run --rm scraper uv run scrape --source ted --force
 docker compose --profile tools run --rm ai uv run analyze --source ted
 docker compose run --rm --no-deps app php artisan ingest:run --source=ted --require-verdict
 docker compose run --rm --no-deps app php artisan detect:run
@@ -137,6 +143,44 @@ crontab -e
 Each run is bounded by `AGENTS_CAP` / `AGENTS_EVAL_CAP` (100/100), so an hourly cadence
 stays within Gemini quota. Tail the log to confirm it's firing: `tail -f /var/log/svineklanitsa-pipeline.log`.
 (`scripts/pipeline.sh` is scp'd to the VM by the deploy, so it's always present + current.)
+
+Sources run **concurrently** (one source's slow scrape never blocks another's data), but
+the three stages *within* a source stay ordered (scrape → analyze → ingest — a data
+dependency). Detectors run once at the end over the union.
+
+### 6.2 Logs — where to look when a run is empty or fails
+Every pipeline run writes a folder of per-step logs **on the VM** (so the throwaway
+`docker compose run` containers are debuggable after they exit):
+```
+<DEPLOY_PATH>/logs/pipeline/<UTC-timestamp>/
+  summary.log              # one line per step: OK / FAIL  (read this first)
+  pipeline.log             # the run timeline + tail of any failed step
+  <source>.1-scrape.log    # full scraper output ("ingested N" — N=0 means nothing scraped)
+  <source>.2-analyze.log   # full analyzer output ("analyzed N, flagged M, written -> …")
+  <source>.3-ingest.log    # ingest table: Read / Written / Skipped + every skip reason
+  detect.log               # detector recompute
+logs/pipeline/latest       # → symlink to the newest run
+```
+Quick triage:
+```bash
+cat  /opt/liberhack/logs/pipeline/latest/summary.log
+tail -n 50 /opt/liberhack/logs/pipeline/latest/ted.3-ingest.log
+```
+App-level detail (ingest counts, errors, queued-mail failures) also goes to Laravel's log
+inside the container: `docker compose exec app tail -n 100 storage/logs/laravel.log`.
+
+### 6.3 Troubleshooting "deploy OK but the DB is empty"
+Walk the stages in order — the first one that reports `0` is the culprit:
+1. **scrape `ingested 0`** → the source was skipped because it's not enabled and `--force`
+   wasn't passed (`<source>.1-scrape.log` will say `disabled`). `pipeline.sh` passes
+   `--force`; if you scraped by hand, add it. (Or set `<SRC>_ENABLED=true` in `.env.prod`.)
+   A real `0` with `--force` means the upstream genuinely returned nothing — check the URL/network.
+2. **analyze ran but ingest `Written: 0`** → look at `<source>.3-ingest.log` skip reasons.
+   `not evaluated — no AI verdict` means the verdict sidecar didn't cover those records
+   (analyze failed or wrote nothing); `--require-verdict` then drops them by design.
+3. **`unauthorized` / image `not found` on pull** → GHCR auth / stale image (see §4 + the
+   `docker login ghcr.io` step). The VM never got the new images, so the tools ran old code.
+4. Confirm what landed: `docker compose exec app php artisan tinker --execute='dump(\Modules\Procurement\Models\Tender::count(), \Modules\Detection\Models\Flag::count());'`
 
 ==============================================================================
 MONITORING  (bring up next to the app)

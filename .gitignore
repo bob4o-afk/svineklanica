@@ -81,3 +81,6 @@ __pycache__/
 /storage/ingest/.cache/
 /apps/scraper/.fastembed_cache/
 **/local_cache/
+
+# Pipeline run logs (scripts/pipeline.sh writes per-step logs here on the VM)
+logs/
