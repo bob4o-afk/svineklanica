@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Modules\Identity\Console\Commands\CreateAdminCommand;
+use Modules\Identity\Console\Commands\FlushBlacklistCommand;
 use Modules\Identity\Events\HoneypotEvent;
 use Modules\Identity\Http\Controllers\HoneypotController;
 use Modules\Identity\Http\Middleware\HoneypotMiddleware;
@@ -36,6 +37,7 @@ class IdentityServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 CreateAdminCommand::class,
+                FlushBlacklistCommand::class,
             ]);
         }
 

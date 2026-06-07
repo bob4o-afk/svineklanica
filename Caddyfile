@@ -49,16 +49,63 @@
 
 	# everything else -> the React app (Vite dev server, or nginx in prod)
 	handle {
-		reverse_proxy {
-			dynamic a {
-				name {$WEB_UPSTREAM_HOST:web}
-				port {$WEB_UPSTREAM_PORT:5173}
-				refresh 2s
-				resolvers 127.0.0.11
+		# `route` keeps these two reverse_proxy-family directives in written order
+		# (forward_auth gate first, then the app proxy).
+		route {
+			# WHOLE-SITE BLACKLIST GATE (security.md §3) — PROD-ONLY (PAGE_GATE_ENABLED=true).
+			# Before serving the SPA shell to a page navigation (a path with NO file
+			# extension, i.e. not matching *.*), ask Laravel's /api/_gate. The blacklist
+			# middleware there 403s a banned caller, so a ban blocks the ENTIRE page,
+			# not just /api. On 2xx forward_auth falls through to the app proxy below.
+			# Asset requests (paths with an extension) and DEV (flag unset -> the
+			# expression is false) skip the gate, so the frontend never depends on the
+			# API being up to load (devops.md §1.1).
+			@nav {
+				expression `{env.PAGE_GATE_ENABLED} == "true" && !path("*.*")`
 			}
-			lb_policy round_robin
-			lb_try_duration 10s
-			lb_try_interval 250ms
+			forward_auth @nav {$API_UPSTREAM_HOST:app}:{$API_UPSTREAM_PORT:8000} {
+				uri /api/_gate
+				method GET
+				# Same real-client-ip rewrite as the @api block, so the blacklist gate
+				# matches on the true caller ip behind Cloudflare, not an edge ip.
+				header_up X-Forwarded-For {http.request.header.Cf-Connecting-Ip}
+				lb_try_duration 5s
+
+				# Banned (gate returned 403) -> raise a 403 error so the shared
+				# handle_errors block below renders the styled page instead of
+				# Laravel's JSON (whose inline styles the API CSP would strip too).
+				# A 2xx falls through to the app proxy as normal.
+				@denied status 403
+				handle_response @denied {
+					error 403
+				}
+			}
+
+			reverse_proxy {
+				dynamic a {
+					name {$WEB_UPSTREAM_HOST:web}
+					port {$WEB_UPSTREAM_PORT:5173}
+					refresh 2s
+					resolvers 127.0.0.11
+				}
+				lb_policy round_robin
+				lb_try_duration 10s
+				lb_try_interval 250ms
+			}
+		}
+	}
+
+	# Reusable styled error page (security.md §3). Renders deploy/caddy/error.html
+	# for ANY error raised in the chain above — the gate's 403, plus proxy-level
+	# 502/503 if an upstream is down — switching its copy on the status code. The
+	# `status` override keeps the real error code (file_server would otherwise send
+	# 200). Mounted at /srv/caddy-errors in the proxy container (compose).
+	handle_errors {
+		root * /srv/caddy-errors
+		rewrite * /error.html
+		templates
+		file_server {
+			status {err.status_code}
 		}
 	}
 }

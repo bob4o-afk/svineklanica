@@ -5,12 +5,20 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Identity\Http\Controllers\Admin\SecurityController;
 use Modules\Identity\Http\Controllers\AuthController;
+use Modules\Identity\Http\Controllers\GateController;
 
 // Loaded by IdentityServiceProvider under the 'api' middleware + '/api' prefix.
 
 // There is ONE login surface: the gated /api/admin/login below (the web client uses it).
 // The bare /api/login is intentionally NOT a route here — it's a honeypot decoy
 // (config/honeypot.php), so anyone hitting it is trapped + blacklisted.
+
+// Whole-site blacklist gate (security.md §3). Caddy `forward_auth` calls this
+// before serving the SPA shell to a page navigation: the BlacklistMiddleware on
+// the `api` group runs FIRST and 403s a banned caller, so a ban blocks the ENTIRE
+// page — not just /api. A clean caller gets 204 and Caddy proceeds to serve the
+// app. Public + rate-limited; the tarpit/throttle keep it from being hammered.
+Route::middleware('throttle:public')->get('/_gate', GateController::class)->name('security.gate');
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');

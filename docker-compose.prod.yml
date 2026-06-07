@@ -23,8 +23,13 @@ services:
       API_UPSTREAM_PORT: "8000"
       WEB_UPSTREAM_HOST: web
       WEB_UPSTREAM_PORT: "80"   # prod web image is nginx on :80
+      # Whole-site blacklist gate (security.md §3): when "true", Caddy forward_auths
+      # a banned caller to a 403 for the ENTIRE page, not just /api. Off by default
+      # (and unset in dev) so a page load never depends on the API being up.
+      PAGE_GATE_ENABLED: ${PAGE_GATE_ENABLED:-false}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/caddy/error.html:/srv/caddy-errors/error.html:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
@@ -64,6 +69,11 @@ services:
     # The async ingest job (ingest:run --queue) runs here, so it needs the handoff dir.
     volumes:
       - ingest_data:/app/storage/ingest
+    # This worker runs queue:work, NOT the FrankenPHP web server — so the image's
+    # baked :8000/_health check can never pass and would mark it permanently
+    # "unhealthy". A queue worker has no HTTP surface to probe; disable the check.
+    healthcheck:
+      disable: true
     depends_on:
       - app
       - redis
@@ -75,6 +85,10 @@ services:
     command: php artisan schedule:work
     volumes:
       - ingest_data:/app/storage/ingest
+    # schedule:work is a long-running ticker, not the web server — same reason as
+    # the queue worker: the baked :8000/_health check can't pass here. Disable it.
+    healthcheck:
+      disable: true
     depends_on:
       - app
 

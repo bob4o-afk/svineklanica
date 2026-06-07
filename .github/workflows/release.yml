@@ -103,7 +103,10 @@ jobs:
           host: ${{ secrets.DEPLOY_SSH_HOST }}
           username: ${{ secrets.DEPLOY_SSH_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "docker-compose.prod.yml,Caddyfile,scripts/pipeline.sh"
+          # deploy/caddy/error.html is the styled error page the proxy mounts
+          # (handle_errors / whole-site 403 gate, security.md §3) — nested path is
+          # preserved under DEPLOY_PATH, matching the docker-compose.prod.yml mount.
+          source: "docker-compose.prod.yml,Caddyfile,scripts/pipeline.sh,deploy/caddy/error.html"
           target: ${{ secrets.DEPLOY_PATH }}
 
       - name: SSH in, pull, migrate, ROLLING (zero-downtime) swap
@@ -133,6 +136,14 @@ jobs:
                 -o "$PLUGIN_DIR/docker-rollout"
               chmod +x "$PLUGIN_DIR/docker-rollout"
             fi
+
+            # Does rollout actually work now? (It can still be unavailable — e.g. docker
+            # invoked via sudo can't see the plugin.) We use this to decide what a rollout
+            # FAILURE means: "new container is unhealthy" (rollout works → gate, fail the
+            # deploy) vs "no rollout available" (→ plain up -d, then the explicit health
+            # gate below catches a broken image). Either way an unhealthy app never ships.
+            ROLLOUT_OK=""
+            docker rollout --help >/dev/null 2>&1 && ROLLOUT_OK=1
 
             # Pin the stack to the freshly built commit SHA, then pull. (sed exits 0
             # even when it matches nothing, so we can't rely on `sed || echo` to add a
@@ -165,9 +176,16 @@ jobs:
             # recreates in place so the release NEVER dies on the swap — at the cost of
             # a brief restart blip. First deploy (service not yet running) → up -d too.
             for svc in app web; do
-              if docker compose ps --status running --services | grep -qx "$svc"; then
-                docker rollout "$svc" || docker compose up -d "$svc"
+              if [ -n "$ROLLOUT_OK" ] && docker compose ps --status running --services | grep -qx "$svc"; then
+                # rollout WAITS for the new container's healthcheck before draining the
+                # old one; if the new container never goes healthy it exits non-zero and
+                # leaves the OLD one serving. We deliberately DON'T mask that with
+                # `|| up -d` (that would promote a broken image) — `set -e` aborts the
+                # deploy instead, and the working container keeps serving (no downtime).
+                docker rollout "$svc"
               else
+                # First deploy (nothing running yet) or rollout unavailable: recreate in
+                # place, then the explicit health gate below catches a broken image.
                 docker compose up -d "$svc"
               fi
             done
@@ -175,6 +193,34 @@ jobs:
             # Background workers + edge proxy: recreate with the new image (no inbound
             # traffic hits the workers, and the proxy reload is graceful).
             docker compose up -d --no-deps queue scheduler proxy
+
+            # --- HEALTH GATE: an unhealthy release must NEVER be declared a success.
+            # This covers the `up -d` path (first deploy / rollout unavailable), which has
+            # no built-in health wait. Poll each web-facing container's Docker healthcheck;
+            # if app or web doesn't reach "healthy", abort (set -e + exit 1 → the deploy job
+            # fails → notify-failure emails). Where rollout was used, the previous container
+            # is left running, so a failed gate doesn't take the site down.
+            echo "Health gate: waiting for app + web to report healthy..."
+            for svc in app web; do
+              cid="$(docker compose ps -q "$svc")"
+              if [ -z "$cid" ]; then
+                echo "::error::$svc has no container after swap — deploy aborted."
+                exit 1
+              fi
+              ok=""
+              for _ in $(seq 1 40); do
+                status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null || echo unknown)"
+                [ "$status" = "healthy" ] && { ok=1; break; }
+                sleep 3
+              done
+              if [ -z "$ok" ]; then
+                echo "::error::$svc did not become healthy (last status: ${status:-unknown}) — deploy aborted."
+                docker compose logs --tail=80 "$svc" || true
+                exit 1
+              fi
+              echo "  $svc: healthy"
+            done
+            echo "Health gate passed."
 
             # Sanity check: the new app image must actually contain the code we expect.
             # `detect:run` is part of the Detection module — if this errors with

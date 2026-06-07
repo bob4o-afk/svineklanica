@@ -25,6 +25,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/caddy/error.html:/srv/caddy-errors/error.html:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

@@ -1,0 +1,109 @@
+<!doctype html>
+{{- $code := placeholder "http.error.status_code" -}}
+<html lang="bg">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex">
+	<title>{{$code}} · Свинекланица Watchdog</title>
+	<style>
+		/* Self-contained punk fallback page (mirror of apps/web NotFoundPage +
+		   theme tokens: ink #0a0a0a / bone #f4f1ea / alarm #ff2d2d / acid #a8cc00).
+		   Served by Caddy, NOT Laravel, so it isn't subject to the API's strict CSP —
+		   inline styles are intentional and safe here. No web fonts: system stacks
+		   only, so the page renders even when the SPA never loads. */
+		:root {
+			--ink: #0a0a0a;
+			--bg: #111111;
+			--paper: #1c1c1e;
+			--bone: #f4f1ea;
+			--alarm: #ff2d2d;
+			--acid: #a8cc00;
+			--muted: #6b7280;
+			--mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+			--sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+			--display: "Manrope", system-ui, -apple-system, sans-serif;
+		}
+		* { box-sizing: border-box; }
+		html, body { height: 100%; margin: 0; }
+		body {
+			background: var(--bg);
+			color: var(--bone);
+			font-family: var(--sans);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 2rem;
+			-webkit-font-smoothing: antialiased;
+		}
+		.card {
+			width: 100%;
+			max-width: 32rem;
+			text-align: center;
+		}
+		.wordmark {
+			font-family: var(--mono);
+			font-weight: 600;
+			letter-spacing: 0.12em;
+			text-transform: uppercase;
+			font-size: 0.75rem;
+			color: var(--muted);
+			margin: 0 0 2rem;
+		}
+		.code {
+			font-family: var(--mono);
+			font-weight: 700;
+			font-size: clamp(4rem, 18vw, 7rem);
+			line-height: 1;
+			color: var(--alarm);
+			margin: 0;
+		}
+		.title {
+			font-family: var(--display);
+			font-weight: 800;
+			letter-spacing: -0.02em;
+			font-size: 1.5rem;
+			margin: 1rem 0 0.5rem;
+			overflow-wrap: break-word;
+		}
+		.body {
+			color: var(--muted);
+			font-size: 0.95rem;
+			line-height: 1.5;
+			margin: 0 auto 2rem;
+			max-width: 26rem;
+		}
+		.home {
+			display: inline-block;
+			font-family: var(--display);
+			font-weight: 600;
+			text-decoration: none;
+			background: var(--acid);
+			color: var(--ink);
+			padding: 0.65rem 1.4rem;
+			border-radius: 2px;
+		}
+		.home:hover { filter: brightness(1.08); }
+	</style>
+</head>
+<body>
+	<main class="card">
+		<p class="wordmark">Свинекланица · Watchdog</p>
+		<p class="code">{{$code}}</p>
+		{{- if eq $code "403"}}
+		<h1 class="title">Достъпът е отказан</h1>
+		<p class="body">Достъпът ви до Свинекланица е ограничен. Ако смятате, че това е грешка, опитайте по-късно.</p>
+		{{- else if eq $code "404"}}
+		<h1 class="title">Страницата не е намерена</h1>
+		<p class="body">Тази страница не съществува.</p>
+		{{- else if eq $code "429"}}
+		<h1 class="title">Прекалено много заявки</h1>
+		<p class="body">Изпратихте твърде много заявки за кратко време. Изчакайте малко и опитайте отново.</p>
+		{{- else}}
+		<h1 class="title">Възникна грешка</h1>
+		<p class="body">Нещо се обърка. Опитайте отново след малко.</p>
+		{{- end}}
+		<a class="home" href="/">Към началото</a>
+	</main>
+</body>
+</html>

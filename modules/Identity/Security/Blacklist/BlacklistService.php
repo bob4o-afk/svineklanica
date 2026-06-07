@@ -6,6 +6,7 @@ namespace Modules\Identity\Security\Blacklist;
 
 use App\Support\Logging\LoggingService;
 use Illuminate\Support\Facades\Cache;
+use Modules\Identity\Security\Whitelist\WhitelistService;
 
 /**
  * The abuse blacklist (security.md §3). Cache-backed (Redis in prod, array in
@@ -28,13 +29,24 @@ final class BlacklistService
 {
     private const PREFIX = 'security:blacklist:';
 
+    /**
+     * A cache key holding the set of currently-tracked blacklist keys, so the
+     * otherwise-unenumerable salted-hash bans can be listed and flushed wholesale
+     * (`security:flush-blacklist`). Stored in the SAME cache store as the bans
+     * themselves (Redis in prod) and mutated under a lock so concurrent bans don't
+     * lose entries. It may accumulate keys for already-expired bans — flush() skips
+     * those — and is itself cleared by a flush.
+     */
+    private const INDEX = self::PREFIX.'__index';
+
     /** The signal type used by the legacy ip-only helpers. */
     private const IP = 'ip';
 
     private readonly LoggingService $log;
 
-    public function __construct()
-    {
+    public function __construct(
+        private readonly WhitelistService $whitelist,
+    ) {
         $this->log = new LoggingService('security');
     }
 
@@ -92,8 +104,18 @@ final class BlacklistService
     {
         $ttl ??= (int) config('security.blacklist.ttl', 86400);
 
+        $newKeys = [];
+
         foreach ($signals as $type => $value) {
             if ($value === '') {
+                continue;
+            }
+
+            // A whitelisted ip is a trusted operator (security.md §4): the allow-list
+            // beats the blacklist, so we never even RECORD it as banned — not just
+            // skip it at request time. (Other signals of the same offending request
+            // are still banned; only the trusted ip is spared.)
+            if ($type === self::IP && $this->whitelist->isWhitelisted($value)) {
                 continue;
             }
 
@@ -109,7 +131,11 @@ final class BlacklistService
                 'reason' => $reason,
                 'banned_at' => now()->toIso8601String(),
             ], $ttl);
+
+            $newKeys[] = $key;
         }
+
+        $this->indexKeys($newKeys);
 
         // One ban event per offence, not one per signal (less log noise). Logs a
         // short hash per signal type, never the raw value (privacy, §9).
@@ -118,6 +144,52 @@ final class BlacklistService
             'ttl' => $ttl,
             'signals' => $this->loggableSignals($signals),
         ]);
+    }
+
+    /**
+     * Clear EVERY blacklist entry (all signal types) in one shot — the
+     * `security:flush-blacklist` command. Walks the tracked index, forgets each
+     * still-live ban, then drops the index itself. Returns how many live bans were
+     * removed (expired/already-gone keys are skipped, not counted). Whitelisted
+     * operators were never recorded, so they're unaffected.
+     */
+    public function flush(): int
+    {
+        /** @var array<int, string> $keys */
+        $keys = (array) Cache::get(self::INDEX, []);
+
+        $removed = 0;
+        foreach (array_unique($keys) as $key) {
+            if (Cache::has($key)) {
+                Cache::forget($key);
+                $removed++;
+            }
+        }
+
+        Cache::forget(self::INDEX);
+
+        $this->log->warning('blacklist.flush', ['removed' => $removed]);
+
+        return $removed;
+    }
+
+    /**
+     * Record freshly-banned keys in the enumerable index, under a lock so two
+     * concurrent bans don't clobber each other's additions (security.md §3).
+     *
+     * @param  array<int, string>  $keys
+     */
+    private function indexKeys(array $keys): void
+    {
+        if ($keys === []) {
+            return;
+        }
+
+        Cache::lock(self::INDEX.':lock', 5)->block(3, function () use ($keys): void {
+            /** @var array<int, string> $current */
+            $current = (array) Cache::get(self::INDEX, []);
+            Cache::forever(self::INDEX, array_values(array_unique([...$current, ...$keys])));
+        });
     }
 
     private function isSignalBlocked(string $type, string $value): bool

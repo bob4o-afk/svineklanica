@@ -30,6 +30,34 @@ it('lets a clean caller through the gate', function () {
         ->assertStatus(422);
 });
 
+// --- Whole-site page gate (security.md §3): Caddy forward_auths /api/_gate ----
+
+it('blocks a banned caller at the whole-site page gate (403)', function () {
+    app(BlacklistService::class)->add('127.0.0.1', 'test:manual');
+
+    // Caddy returns this 403 for the ENTIRE page, not just /api.
+    $this->getJson('/api/_gate')->assertStatus(403);
+});
+
+it('lets a clean caller through the page gate (204 = serve the app)', function () {
+    $this->getJson('/api/_gate')->assertNoContent();
+});
+
+// --- Whitelisted ips are never RECORDED as banned (security.md §4) -----------
+
+it('never marks a whitelisted ip as blacklisted, even on a multi-signal ban', function () {
+    config(['security.whitelist.ips' => ['127.0.0.1']]);
+    $service = app(BlacklistService::class);
+
+    // A request from the trusted ip carries other signals too; ban them all.
+    $service->blockSignals(['ip' => '127.0.0.1', 'device' => 'op-device'], 'test:whitelisted');
+
+    // The trusted ip is spared — never written to the blacklist…
+    expect($service->isBlacklisted('127.0.0.1'))->toBeFalse()
+        // …but its non-ip signals ARE banned (only the ip is privileged).
+        ->and($service->anyBlocked(['device' => 'op-device']))->toBeTrue();
+});
+
 it('auto-blacklists a SQL-injection probe', function () {
     $this->getJson('/api/user?q=1 UNION SELECT password FROM users')
         ->assertStatus(403);
@@ -85,6 +113,35 @@ it('bans every signal at once so a honeypot hit blocks the whole identity', func
         ->and($service->anyBlocked(['client' => 'c1']))->toBeTrue()
         ->and($service->anyBlocked(['headerfp' => 'h1']))->toBeTrue()
         ->and($service->anyBlocked(['ip' => '1.1.1.1', 'device' => 'other']))->toBeFalse();
+});
+
+it('flushes every blacklist entry across all signals (security:flush-blacklist)', function () {
+    $service = app(BlacklistService::class);
+    $service->blockSignals(['ip' => '9.9.9.9', 'device' => 'd1', 'client' => 'c1'], 'test:multi');
+    $service->add('8.8.8.8', 'test:ip');
+
+    expect($service->isBlacklisted('9.9.9.9'))->toBeTrue()
+        ->and($service->isBlacklisted('8.8.8.8'))->toBeTrue();
+
+    $this->artisan('security:flush-blacklist', ['--force' => true])
+        ->expectsOutputToContain('Cleared 4 blacklist entries.')
+        ->assertSuccessful();
+
+    expect($service->isBlacklisted('9.9.9.9'))->toBeFalse()
+        ->and($service->anyBlocked(['device' => 'd1']))->toBeFalse()
+        ->and($service->anyBlocked(['client' => 'c1']))->toBeFalse()
+        ->and($service->isBlacklisted('8.8.8.8'))->toBeFalse();
+});
+
+it('does not flush when the operator declines the confirmation', function () {
+    app(BlacklistService::class)->add('9.9.9.9', 'test:ip');
+
+    $this->artisan('security:flush-blacklist')
+        ->expectsConfirmation('Remove ALL blacklist entries? This lets every currently-banned caller back in.', 'no')
+        ->expectsOutputToContain('Aborted')
+        ->assertSuccessful();
+
+    expect(app(BlacklistService::class)->isBlacklisted('9.9.9.9'))->toBeTrue();
 });
 
 it('expires a blacklist entry (no permanent lockout)', function () {
