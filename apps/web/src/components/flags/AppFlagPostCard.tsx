@@ -4,13 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { formatDate } from '@/lib/date';
 import { formatNumber } from '@/lib/format';
-import { flagTypeMeta } from '@/lib/flags';
+import { flagTypeMeta, makeTldr } from '@/lib/flags';
 import { paths } from '@/routes/paths';
 import { fonts } from '@/theme/typography';
 import { palette } from '@/theme/tokens';
 import type { FlagPost, FlagSubject } from '@/types/api';
 import { AppCategoryBadge } from './AppCategoryBadge';
-import { AppEvidenceList } from './AppEvidenceList';
 import { AppFlagBadge } from './AppFlagBadge';
 import { AppSectorBadge } from './AppSectorBadge';
 import { AppSeverityChip } from './AppSeverityChip';
@@ -37,6 +36,7 @@ export function AppFlagPostCard({ flag }: AppFlagPostCardProps) {
   const typeMeta = flagTypeMeta[flag.type];
   const headline = flag.title ?? (typeMeta !== undefined ? t(typeMeta.i18nKey) : flag.type);
   const subject = subjectLine(flag.subject);
+  const tldr = makeTldr(flag);
   const primarySource = flag.sources[0];
 
   return (
@@ -44,9 +44,9 @@ export function AppFlagPostCard({ flag }: AppFlagPostCardProps) {
       {/* 2px alarm-red top border marks every card as a potential scandal */}
       <Box sx={{ height: 2, bgcolor: palette.alarm, flexShrink: 0 }} />
       <CardActionArea component={RouterLink} to={paths.post(flag.public_id)}>
-        <CardContent>
+        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
           {/* Sphere → Category → severity (+score %) — the §1.0 hierarchy, then type/sector/tags. */}
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }} alignItems="center">
+          <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: 1 }} alignItems="center">
             {flag.sphere !== undefined ? <AppSphereBadge sphere={flag.sphere} /> : null}
             {flag.corruption_category !== undefined ? (
               <AppCategoryBadge category={flag.corruption_category} />
@@ -71,10 +71,22 @@ export function AppFlagPostCard({ flag }: AppFlagPostCardProps) {
               {subject}
             </Typography>
           ) : null}
-          <Typography variant="body2" sx={{ mb: 2, fontSize: '0.8125rem', lineHeight: 1.55 }}>
-            {flag.explanation_bg}
+          {/* Compact TL;DR gist (not the full explanation) — the full write-up + evidence
+              live on the post page. Clamped to 2 lines so every card stays the same short height. */}
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              fontSize: '0.8125rem',
+              lineHeight: 1.5,
+              display: '-webkit-box',
+              WebkitBoxOrient: 'vertical',
+              WebkitLineClamp: 2,
+              overflow: 'hidden',
+            }}
+          >
+            {tldr}
           </Typography>
-          <AppEvidenceList items={flag.evidence} max={2} />
         </CardContent>
       </CardActionArea>
       <CardActions sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, px: 2, py: 1, borderTop: `1px solid ${palette.alarm}22` }}>

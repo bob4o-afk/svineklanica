@@ -177,3 +177,13 @@ git tag v1.0.0 && git push origin v1.0.0
 git checkout main
 git tag v1.0.4
 git push origin v1.0.4
+
+
+
+
+export COMPOSE_FILE=docker-compose.prod.yml
+export COMPOSE_ENV_FILES=.env.prod
+
+docker compose --profile tools run --rm scraper uv run scrape --source ted
+docker compose --profile tools run --rm ai uv run analyze --source ted
+docker compose exec app php artisan ingest:run --source=ted

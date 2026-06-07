@@ -184,7 +184,7 @@ final class DemoSeeder extends Seeder
 
         $this->flag([
             'type' => FlagType::PriceDiscrepancy,
-            'score' => 88,
+            'score' => 96,
             'title' => 'Община Бургас надплати 2.4× за същия лаптоп',
             'explanation_bg' => 'Същият модел лаптоп (15.6" i5/16GB) е поръчан на 3300 лв./бр., докато средната пазарна цена в други поръчки за периода е около 1400 лв./бр. — разлика от 2.4 пъти без обосновка в документацията.',
             'sphere' => Sphere::Police,
@@ -219,7 +219,7 @@ final class DemoSeeder extends Seeder
 
         $this->flag([
             'type' => FlagType::SerialWinner,
-            'score' => 79,
+            'score' => 92,
             'title' => 'Стройинвест Корект печели 9 поредни поръчки',
             'explanation_bg' => 'Стройинвест Корект ЕООД печели 9 обществени поръчки от два възложителя, а свързаната фирма Билд Про Груп ЕООД (същ. адрес и управител) печели още 4 от същия възложител — индикация за разпределяне на пазара между свързани лица.',
             'sphere' => Sphere::Police,
@@ -245,7 +245,7 @@ final class DemoSeeder extends Seeder
     {
         $cases = [
             [
-                'type' => FlagType::TailoredSpec, 'score' => 72, 'sphere' => Sphere::Healthcare,
+                'type' => FlagType::TailoredSpec, 'score' => 90, 'sphere' => Sphere::Healthcare,
                 'auth' => 'umbal', 'winner' => 'medtech', 'cpv' => '33141000', 'value' => 980000,
                 'title' => 'Спецификация, скроена за един доставчик',
                 'tender_title' => 'Доставка на медицински консумативи',
@@ -253,7 +253,7 @@ final class DemoSeeder extends Seeder
                 'evidence' => [['label' => 'Отговарящи оферти', 'value' => 1], ['label' => 'Прогнозна стойност', 'value' => '980 000 лв.', 'money' => ['amount' => 980000, 'currency' => 'BGN', 'vat_included' => true]]],
             ],
             [
-                'type' => FlagType::Cancelled, 'score' => 64, 'sphere' => Sphere::Judiciary,
+                'type' => FlagType::Cancelled, 'score' => 85, 'sphere' => Sphere::Judiciary,
                 'auth' => 'vss', 'winner' => null, 'cpv' => '30200000', 'value' => 350000,
                 'status' => TenderStatus::Cancelled,
                 'title' => 'Прекратена след отваряне на офертите',
@@ -262,7 +262,7 @@ final class DemoSeeder extends Seeder
                 'evidence' => [['label' => 'Статус', 'value' => 'Прекратена'], ['label' => 'Дни до прекратяване', 'value' => 12]],
             ],
             [
-                'type' => FlagType::ImplausibleScope, 'score' => 91, 'sphere' => Sphere::Police,
+                'type' => FlagType::ImplausibleScope, 'score' => 97, 'sphere' => Sphere::Police,
                 'auth' => 'belitsa', 'winner' => 'pathstroy', 'cpv' => '45233140', 'value' => 1200000,
                 'title' => 'Ремонт на път, който е почти нов',
                 'tender_title' => 'Ремонт на общински път BGS1083',
@@ -270,7 +270,7 @@ final class DemoSeeder extends Seeder
                 'evidence' => [['label' => 'Възраст на пътя', 'value' => '2 г.'], ['label' => 'Стойност', 'value' => '1.2 млн. лв.', 'money' => ['amount' => 1200000, 'currency' => 'BGN', 'vat_included' => true]]],
             ],
             [
-                'type' => FlagType::DelayedPayment, 'score' => 47, 'sphere' => Sphere::Healthcare,
+                'type' => FlagType::DelayedPayment, 'score' => 78, 'sphere' => Sphere::Healthcare,
                 'auth' => 'varna', 'winner' => 'medtech', 'cpv' => '85100000', 'value' => 640000,
                 'title' => 'Хронично забавени плащания',
                 'tender_title' => 'Услуги по дезинфекция на общински обекти',
@@ -278,7 +278,7 @@ final class DemoSeeder extends Seeder
                 'evidence' => [['label' => 'Среден лаг', 'value' => '180 дни'], ['label' => 'Договорен срок', 'value' => '90 дни']],
             ],
             [
-                'type' => FlagType::DocClone, 'score' => 38, 'sphere' => Sphere::Judiciary,
+                'type' => FlagType::DocClone, 'score' => 74, 'sphere' => Sphere::Judiciary,
                 'auth' => 'sofia', 'winner' => 'itsol', 'cpv' => '72000000', 'value' => 420000,
                 'title' => 'Копирана документация с вмъкната клауза',
                 'tender_title' => 'Поддръжка на информационни системи',
@@ -286,7 +286,7 @@ final class DemoSeeder extends Seeder
                 'evidence' => [['label' => 'Сходство с образец', 'value' => '96%'], ['label' => 'Добавени клаузи', 'value' => 1]],
             ],
             [
-                'type' => FlagType::PriceDiscrepancy, 'score' => 58, 'sphere' => Sphere::Healthcare,
+                'type' => FlagType::PriceDiscrepancy, 'score' => 84, 'sphere' => Sphere::Healthcare,
                 'auth' => 'plovdiv', 'winner' => 'itsol', 'cpv' => '30190000', 'value' => 210000,
                 'title' => 'Офис техника на завишени цени',
                 'tender_title' => 'Доставка на офис оборудване',
