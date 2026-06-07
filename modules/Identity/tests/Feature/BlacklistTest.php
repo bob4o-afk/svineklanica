@@ -11,18 +11,22 @@ use Modules\Identity\Security\Fingerprint\RequestFingerprint;
 
 // The blacklist lives in the cache; flush it so each test starts uncontaminated
 // (RefreshDatabase resets the DB, not the cache store).
-beforeEach(fn () => Cache::flush());
+beforeEach(function () {
+    Cache::flush();
+    // Don't inherit the operator's .env IP allow-list — 127.0.0.1 must be untrusted here.
+    config(['security.whitelist.ips' => []]);
+});
 
 it('rejects an already-blacklisted caller with 403', function () {
     app(BlacklistService::class)->add('127.0.0.1', 'test:manual');
 
-    $this->postJson('/api/login', ['email' => 'a@test.com', 'password' => 'x'])
+    $this->postJson('/api/admin/login', ['email' => 'a@test.com', 'password' => 'x'])
         ->assertStatus(403);
 });
 
 it('lets a clean caller through the gate', function () {
     // 422 (validation) proves we got PAST the blacklist gate to the controller.
-    $this->postJson('/api/login', ['email' => 'not-an-email', 'password' => ''])
+    $this->postJson('/api/admin/login', ['email' => 'not-an-email', 'password' => ''])
         ->assertStatus(422);
 });
 
@@ -57,7 +61,7 @@ it('keeps a banned caller out after an ip change (device-cookie signal)', functi
     // withCredentials() makes the JSON test client actually send cookies.
     $this->withCredentials()
         ->withUnencryptedCookie(RequestFingerprint::COOKIE, 'dev-abc')
-        ->postJson('/api/login', ['email' => 'a@test.com', 'password' => 'x'])
+        ->postJson('/api/admin/login', ['email' => 'a@test.com', 'password' => 'x'])
         ->assertStatus(403);
 });
 
@@ -66,7 +70,7 @@ it('keeps a banned caller out via the localStorage id (X-Device-Id)', function (
     app(BlacklistService::class)->blockSignals(['client' => 'ls-xyz'], 'test:client');
 
     $this->withHeader(RequestFingerprint::CLIENT_ID_HEADER, 'ls-xyz')
-        ->postJson('/api/login', ['email' => 'a@test.com', 'password' => 'x'])
+        ->postJson('/api/admin/login', ['email' => 'a@test.com', 'password' => 'x'])
         ->assertStatus(403);
 });
 

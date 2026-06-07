@@ -14,6 +14,16 @@
     "medium": "Средно",
     "low": "Ниско"
   },
+  "sphere": {
+    "judiciary": "Съдебна система",
+    "healthcare": "Здравеопазване",
+    "police": "Полиция",
+    "education": "Образование"
+  },
+  "category": {
+    "public_procurement": "Обществена поръчка",
+    "unregulated_payment": "Нерегламентирани плащания"
+  },
   "card": {
     "evidence": "Доказателства",
     "source": "Източник",

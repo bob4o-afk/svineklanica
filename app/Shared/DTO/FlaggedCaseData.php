@@ -15,7 +15,8 @@ use App\Shared\Enums\Sphere;
 final readonly class FlaggedCaseData
 {
     public function __construct(
-        public string $kind,        // 'tender' | 'payment'
+        public string $kind,        // 'tender' | 'payment' (the flag morph alias)
+        public int $subjectId,      // internal id — lets the consumer resolve its flag (never exposed)
         public string $title,
         public float $amount,       // full contract value (the headline number)
         public string $currency,

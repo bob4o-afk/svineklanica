@@ -13,6 +13,8 @@ export interface AppSectorBadgeProps {
 export function AppSectorBadge({ sector, size = 'small' }: AppSectorBadgeProps) {
   const { t } = useTranslation();
   const meta = sectorMeta[sector];
+  // Unknown sector → skip the badge instead of crashing the card (graceful degradation).
+  if (meta === undefined) return null;
   const SectorIcon = meta.icon;
 
   return (

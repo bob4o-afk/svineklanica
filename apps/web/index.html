@@ -18,6 +18,41 @@
     />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>СВИНЕКЛАНИЦА — корупцията на показ</title>
+
+    <!--
+      Static SEO defaults — what crawlers that DON'T run JS (social link scrapers: Facebook,
+      Telegram, Viber, X) read for the link preview. Per-route titles/descriptions are set at
+      runtime by AppSeo (react-helmet). Leads with the hero line so the phrase
+      "Парите са обществени. Прозрачността — не." surfaces the site.
+    -->
+    <meta
+      name="description"
+      content="Парите са обществени. Прозрачността — не. Автоматично откриваме съмнителни обществени поръчки и плащания в България и показваме къде отиват парите ти — с връзка към първоизточника за всяко твърдение."
+    />
+    <meta
+      name="keywords"
+      content="обществени поръчки, прозрачност, корупция, къде ми отиват парите, къде отиват парите, разходи на държавата, обществени средства, контрол на властта, България, Свинекланица"
+    />
+
+    <meta property="og:site_name" content="СВИНЕКЛАНИЦА" />
+    <meta property="og:locale" content="bg_BG" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="СВИНЕКЛАНИЦА — корупцията на показ" />
+    <meta
+      property="og:description"
+      content="Парите са обществени. Прозрачността — не. Откриваме съмнителните обществени поръчки и показваме къде отиват парите ти."
+    />
+    <meta property="og:image" content="/pwa-512x512.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="СВИНЕКЛАНИЦА — корупцията на показ" />
+
+    <!-- Official social profiles (Instagram + GitHub). -->
+    <meta property="og:see_also" content="https://www.instagram.com/borislav_milanov_/" />
+    <meta property="og:see_also" content="https://github.com/BabyNejii/corruption-fucker" />
+    <link rel="me" href="https://www.instagram.com/borislav_milanov_/" />
+    <link rel="me" href="https://github.com/BabyNejii/corruption-fucker" />
   </head>
   <body>
     <!-- MUI + Tailwind both target #root (Tailwind `important: '#root'`). -->

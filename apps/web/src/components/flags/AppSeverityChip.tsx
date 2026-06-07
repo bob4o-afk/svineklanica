@@ -13,11 +13,14 @@ const tokenToColor: Record<SeverityToken, NonNullable<ChipProps['color']>> = {
 
 export interface AppSeverityChipProps {
   severity: FlagSeverity;
+  /** The 0–100 suspicion score; when given it's shown next to the band, e.g. "Високо · 87%". */
+  score?: number;
   size?: ChipProps['size'];
 }
 
-export function AppSeverityChip({ severity, size = 'small' }: AppSeverityChipProps) {
+export function AppSeverityChip({ severity, score, size = 'small' }: AppSeverityChipProps) {
   const { t } = useTranslation();
   const meta = severityMeta[severity];
-  return <Chip size={size} color={tokenToColor[meta.token]} label={t(meta.i18nKey)} variant="filled" />;
+  const label = score !== undefined ? `${t(meta.i18nKey)} · ${score}%` : t(meta.i18nKey);
+  return <Chip size={size} color={tokenToColor[meta.token]} label={label} variant="filled" />;
 }

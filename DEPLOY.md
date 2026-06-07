@@ -119,6 +119,9 @@ The analyzer's cost/concurrency caps come from **`.env.prod`** on the VM (used b
   (a deterministic verdict still counts). Raise it (e.g. 300) for more LLM coverage per run.
 - **`SCRAPE_SOURCES`** — (optional) space/comma list of sources for the cron run; defaults
   to `ted`, `off`/`none` disables. The deploy reads it from the repo variable instead.
+- **`PIPELINE_MIN_SCORE`** — (optional, 0–100, default `0`) only AI verdicts at/above this score
+  become flag posts (passed to `analyze:ingest --min-score`). `0` shows every evaluated record;
+  raise it (e.g. `40`) so the feed surfaces only the suspicious cases.
 
 Run the whole thing by hand on the VM exactly as cron/deploy do:
 ```bash
@@ -135,16 +138,22 @@ docker compose run --rm --no-deps app php artisan analyze:ingest --source=ted   
 docker compose run --rm --no-deps app php artisan detect:run                    # deterministic flags
 ```
 
-### 6.1 Hourly refresh via cron
+### 6.1 Hourly refresh via cron — auto-installed by the deploy
 The scrape/AI/ingest tools are one-shot batch jobs (compose profile `tools`), not daemons,
-so they're driven by the host scheduler. Add one crontab line on the VM:
+so they're driven by the host scheduler. **You don't add this by hand** — the deploy
+(`release.yml`) **idempotently installs the crontab line on every release**, so the hourly
+refresh is guaranteed on any VM the deploy has touched (no manual `crontab -e`). The line it
+ensures (at `:05`, logging to the deploy dir so it's writable by the deploy user):
 ```bash
-crontab -e
-# Свинекланица: refresh data every hour at :05. Logs to /var/log/svineklanitsa-pipeline.log.
-5 * * * * cd /opt/liberhack && /usr/bin/bash scripts/pipeline.sh >> /var/log/svineklanitsa-pipeline.log 2>&1
+5 * * * * cd $DEPLOY_PATH && /usr/bin/bash scripts/pipeline.sh >> $DEPLOY_PATH/logs/pipeline-cron.log 2>&1
 ```
-Each run is bounded by `AGENTS_CAP` / `AGENTS_EVAL_CAP` (100/100), so an hourly cadence
-stays within Gemini quota. Tail the log to confirm it's firing: `tail -f /var/log/svineklanitsa-pipeline.log`.
+The install strips any prior `scripts/pipeline.sh` cron line before re-adding, so re-deploys
+never duplicate it. Each run is bounded by `AGENTS_CAP` / `AGENTS_EVAL_CAP` (100/100), so an
+hourly cadence stays within Gemini quota. Confirm it's installed/firing on the VM with:
+```bash
+crontab -l | grep pipeline.sh                  # the line is present
+tail -f $DEPLOY_PATH/logs/pipeline-cron.log     # cron stdout, each hour
+```
 (`scripts/pipeline.sh` is scp'd to the VM by the deploy, so it's always present + current.)
 
 Sources run **concurrently** (one source's slow scrape never blocks another's data), but

@@ -118,6 +118,8 @@ function buildFlag(index: number, rng: () => number): FlagPost {
   const detectedAt = daysAgoISO(index);
   const approved = index < APPROVED_COUNT;
   const tags = tagsFor(type, severity);
+  // Deterministic view total so the "by views" feed sort is demonstrable under MSW.
+  const viewCount = intBetween(0, 5_000, rng());
 
   const headlineInput = { authority: authority.name, company: company.name, multiplier, count };
 
@@ -148,6 +150,7 @@ function buildFlag(index: number, rng: () => number): FlagPost {
     evidence,
     sources,
     detected_at: detectedAt,
+    view_count: viewCount,
     ...(approved ? { published_at: detectedAt } : {}),
     ...(isPriceFlag ? { series_key: 'laptops' } : {}),
     ...(approved && tags.length > 0 ? { tags } : {}),

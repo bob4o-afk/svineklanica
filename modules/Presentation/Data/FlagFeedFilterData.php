@@ -56,7 +56,9 @@ final class FlagFeedFilterData
 
         $region = self::str($request->query('region'));
         $q = self::str($request->query('q'));
-        $sort = $request->query('sort') === 'severity' ? 'severity' : 'newest';
+        $sort = in_array($request->query('sort'), ['severity', 'views'], true)
+            ? (string) $request->query('sort')
+            : 'newest';
 
         $page = max(1, (int) $request->query('page', '1'));
         $perPage = (int) $request->query('per_page', '6');

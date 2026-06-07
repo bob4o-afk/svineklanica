@@ -15,10 +15,17 @@ export type FlagType =
   | 'doc_clone';
 
 export type FlagSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+/** Sphere (сфера) — the part of the state where the rot lives (CLAUDE.md §1.0). */
+export type Sphere = 'judiciary' | 'healthcare' | 'police' | 'education';
+
+/** Corruption category (категория) — the abuse MECHANISM inside a sphere (CLAUDE.md §1.0). */
+export type CorruptionCategory = 'public_procurement' | 'unregulated_payment';
+
 export type ApprovalStatus = 'detected' | 'pending' | 'approved' | 'rejected';
 export type SubjectType = 'tender' | 'authority' | 'company';
 export type Currency = 'BGN' | 'EUR';
-export type FlagSort = 'newest' | 'severity';
+export type FlagSort = 'newest' | 'severity' | 'views';
 
 /** Procurement sector (CPV-derived) — lets a citizen filter "show me the hospital/school deals". */
 export type ProcurementSector =
@@ -82,6 +89,10 @@ export interface EvidenceItem {
 export interface FlagPost {
   public_id: string;
   type: FlagType;
+  /** §1.0 hierarchy: sphere → corruption_category → severity (+ the 0–100 score). */
+  sphere?: Sphere;
+  corruption_category?: CorruptionCategory;
+  score?: number;
   category?: ProcurementSector;
   severity: FlagSeverity;
   status: ApprovalStatus;
@@ -197,13 +208,47 @@ export interface PlatformStats {
   detectors: number;
 }
 
-export type AdminRole = 'admin' | 'reviewer';
+/** One headline flagged deal in the corruption-tax result + the user's stake in it. */
+export interface CorruptionTaxCase {
+  kind: 'tender' | 'payment';
+  title: string;
+  amount: MoneyAmount;
+  score: number; // suspicion 0–100
+  source_url: string;
+  user_share: MoneyAmount;
+  /** Link to the readable flag-post (`/posts/{flag_public_id}`). */
+  flag_public_id?: string;
+}
 
+/** Per-sphere slice of the corruption-tax result. */
+export interface CorruptionTaxSphere {
+  sphere_label?: string;
+  total: MoneyAmount;
+  flagged: MoneyAmount;
+  rate: number; // flagged / total within the sphere
+  user_amount: MoneyAmount;
+}
+
+/** Contract `CorruptionTax` — the calculator result (CLAUDE.md): the flagged share of
+ *  public spend projected onto the taxes a citizen paid, with cases linking to flag-posts. */
+export interface CorruptionTax {
+  taxes_paid: MoneyAmount;
+  corruption_rate: number; // 0..1
+  user_corruption_amount: MoneyAmount;
+  total_spend: MoneyAmount;
+  flagged_spend: MoneyAmount;
+  per_sphere: CorruptionTaxSphere[];
+  top_cases: CorruptionTaxCase[];
+}
+
+/** The authenticated user, as returned by the real backend `GET /api/user` (Identity
+ *  `UserData`). camelCase because this endpoint is the raw Identity DTO, not the snake_case
+ *  Presentation BFF. `is_admin` gates the admin area; there is no granular role yet. */
 export interface AdminUser {
-  public_id: string;
+  publicId: string;
   name: string;
   email: string;
-  role: AdminRole;
+  isAdmin: boolean;
 }
 
 export interface Source {

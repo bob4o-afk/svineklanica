@@ -7,6 +7,7 @@ namespace Modules\Procurement;
 use App\Shared\Contracts\ProcurementReadPort;
 use App\Shared\Contracts\SpendReadPort;
 use Illuminate\Support\ServiceProvider;
+use Modules\Procurement\Console\Commands\EmbedRunCommand;
 use Modules\Procurement\Console\Commands\IngestRunCommand;
 use Modules\Procurement\Contracts\IngestRecordRepository;
 use Modules\Procurement\Contracts\PaymentIngestRepository;
@@ -38,6 +39,7 @@ class ProcurementServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 IngestRunCommand::class,
+                EmbedRunCommand::class,
             ]);
         }
     }

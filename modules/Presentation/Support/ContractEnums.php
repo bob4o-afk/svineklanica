@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Presentation\Support;
 
+use App\Shared\Enums\CorruptionCategory;
 use App\Shared\Enums\FlagSeverity;
+use App\Shared\Enums\Sphere;
 use Modules\Detection\Enums\FlagType;
 
 /**
@@ -53,6 +55,26 @@ final class ContractEnums
             FlagSeverity::Medium => 'medium',
             FlagSeverity::High => 'high',
             FlagSeverity::Critical => 'critical',
+        };
+    }
+
+    /** Domain Sphere → contract `Sphere` string (CLAUDE.md §1.0). */
+    public static function sphere(Sphere $sphere): string
+    {
+        return match ($sphere) {
+            Sphere::Judiciary => 'judiciary',
+            Sphere::Healthcare => 'healthcare',
+            Sphere::Police => 'police',
+            Sphere::Education => 'education',
+        };
+    }
+
+    /** Domain CorruptionCategory → contract `CorruptionCategory` string (the abuse MECHANISM). */
+    public static function corruptionCategory(CorruptionCategory $category): string
+    {
+        return match ($category) {
+            CorruptionCategory::PublicProcurement => 'public_procurement',
+            CorruptionCategory::UnregulatedPayment => 'unregulated_payment',
         };
     }
 

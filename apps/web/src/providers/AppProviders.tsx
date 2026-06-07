@@ -7,7 +7,6 @@ import { AppLoadingScreen } from '@/components/feedback/AppLoadingScreen';
 import { makePersistOptions, makeQueryClient } from '@/config/queryClient';
 import i18n from '@/i18n';
 import { AnalyticsProvider } from './AnalyticsProvider';
-import { AuthProvider } from './AuthProvider';
 import { ColorModeProvider } from './ColorModeProvider';
 import { ToastProvider } from './ToastProvider';
 
@@ -22,14 +21,15 @@ export function AppProviders({ children }: { children: ReactNode }) {
   // refetching from scratch (frontend.md §9). Null only if storage is unavailable.
   const [persistOptions] = useState(() => makePersistOptions());
 
+  // NB: AuthProvider is intentionally NOT here. The session probe (`/api/admin/me`) must run only
+  // inside the admin area (mounted by AdminSection in the router) — never on public pages, since
+  // `/api/admin/*` is IP-allow-list-gated and a non-whitelisted probe would self-blacklist.
   const tree = (
-    <AuthProvider>
-      <ToastProvider>
-        <AnalyticsProvider>
-          <Suspense fallback={<AppLoadingScreen />}>{children}</Suspense>
-        </AnalyticsProvider>
-      </ToastProvider>
-    </AuthProvider>
+    <ToastProvider>
+      <AnalyticsProvider>
+        <Suspense fallback={<AppLoadingScreen />}>{children}</Suspense>
+      </AnalyticsProvider>
+    </ToastProvider>
   );
 
   return (

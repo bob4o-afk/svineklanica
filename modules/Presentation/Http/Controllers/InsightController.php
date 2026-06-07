@@ -6,7 +6,11 @@ namespace Modules\Presentation\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Modules\Detection\Enums\FlagType;
+use Modules\Detection\Models\Flag;
+use Modules\Detection\Services\CorruptionTaxCalculator;
 use Modules\Presentation\Contracts\PresentationRepository;
+use Modules\Presentation\Data\CorruptionTaxData;
+use Modules\Presentation\Data\FlagMapPointData;
 use Modules\Presentation\Data\GraphEdgeData;
 use Modules\Presentation\Data\GraphNodeData;
 use Modules\Presentation\Data\PlatformStatsData;
@@ -33,6 +37,20 @@ final class InsightController
             flags: $this->repo->countFlags(),
             detectors: count(FlagType::cases()),
         );
+    }
+
+    /**
+     * Corruption-tax calculator (CLAUDE.md): given the taxes a citizen paid, what
+     * share of public spend is flagged and how much of their money it works out to,
+     * with headline cases linking to readable flag-posts. Reuses the Detection
+     * calculator (the BFF is the one place allowed to read across modules).
+     */
+    public function corruptionTax(Request $request, CorruptionTaxCalculator $calculator): CorruptionTaxData
+    {
+        // Bounded so a junk query can't drive an absurd projection (security.md §5).
+        $taxes = max(0.0, min(100_000_000.0, (float) $request->query('taxes_paid', '0')));
+
+        return CorruptionTaxData::fromResult($calculator->calculate($taxes));
     }
 
     public function priceSeries(string $key): PriceSeriesData
@@ -71,6 +89,19 @@ final class InsightController
             ),
             $this->repo->regionAggregates($sector),
         );
+    }
+
+    /**
+     * Flag pins for the map — every flag that carries a region, projected to the lightweight
+     * map-point shape (CLAUDE.md §1.2 — the map shows WHERE the suspicious deals happen).
+     *
+     * @return FlagMapPointData[]
+     */
+    public function mapPoints(): array
+    {
+        return $this->repo->flagMapPoints()
+            ->map(static fn (Flag $flag): FlagMapPointData => FlagMapPointData::fromModel($flag))
+            ->all();
     }
 
     public function serialWinnerGraph(string $publicId): SerialWinnerGraphData

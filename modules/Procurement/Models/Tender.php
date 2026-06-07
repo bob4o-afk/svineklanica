@@ -7,6 +7,7 @@ namespace Modules\Procurement\Models;
 use App\Shared\Enums\CorruptionCategory;
 use App\Shared\Enums\Sphere;
 use App\Support\PublicId\HasPublicId;
+use App\Support\Vector\VectorCast;
 use Database\Factories\TenderFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -55,6 +56,9 @@ final class Tender extends Model
             'deadline_at' => 'date',
             'awarded_at' => 'date',
             'cancelled_at' => 'date',
+            // Filled by `search:embed` (Google), read by the vector search. Not
+            // fillable on purpose — it is never set from ingest/user input.
+            'description_embedding' => VectorCast::class,
         ];
     }
 

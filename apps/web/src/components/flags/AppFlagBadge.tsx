@@ -12,6 +12,8 @@ export interface AppFlagBadgeProps {
 export function AppFlagBadge({ type, size = 'small' }: AppFlagBadgeProps) {
   const { t } = useTranslation();
   const meta = flagTypeMeta[type];
+  // Unknown detector type → skip the badge instead of crashing the card (graceful degradation).
+  if (meta === undefined) return null;
   const IconComponent = meta.icon;
   return <Chip size={size} variant="outlined" icon={<IconComponent size={16} />} label={t(meta.i18nKey)} />;
 }

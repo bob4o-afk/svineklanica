@@ -26,8 +26,11 @@ export function FeedToolbar({ sort, onSortChange, filter, onFilterChange }: Feed
           options={[
             { value: 'newest', label: t('feed:sort.newest') },
             { value: 'severity', label: t('feed:sort.severity') },
+            { value: 'views', label: t('feed:sort.views') },
           ]}
-          onChange={(value) => onSortChange(value === 'severity' ? 'severity' : 'newest')}
+          onChange={(value) =>
+            onSortChange(value === 'severity' || value === 'views' ? value : 'newest')
+          }
         />
       </Stack>
     </Stack>

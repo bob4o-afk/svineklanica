@@ -16,6 +16,7 @@ export const paths = {
   price: (seriesKey: string) => `/price/${seg(seriesKey)}`,
   network: (publicId: string) => `/network/${seg(publicId)}`,
   map: '/map',
+  calculator: '/calculator',
   about: '/about',
   adminLogin: '/admin/login',
   admin: '/admin',

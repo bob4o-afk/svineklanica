@@ -12,10 +12,10 @@ const DEMO_EMAIL = 'admin@example.com';
 const DEMO_PASSWORD = 'parola';
 
 export const demoAdmin: AdminUser = {
-  public_id: 'admin-1',
+  publicId: 'admin-1',
   name: 'Редактор',
   email: DEMO_EMAIL,
-  role: 'admin',
+  isAdmin: true,
 };
 
 let flags: FlagPost[] = flagPosts.map((flag) => ({ ...flag }));

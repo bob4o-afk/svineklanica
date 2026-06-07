@@ -27,6 +27,15 @@ interface FlagRepository
      */
     public function flaggedSubjectScores(): array;
 
+    /**
+     * The representative (highest-scoring) flag's public_id per distinct flagged
+     * subject, grouped by morph alias — so the calculator can link each headline
+     * case to a readable flag-post. e.g. ['tender' => [23 => 'uuid…'], …].
+     *
+     * @return array<string, array<int, string>>
+     */
+    public function representativeFlagIds(): array;
+
     /** Clear every flag of a given type — lets a detector re-run idempotently. */
     public function deleteByType(FlagType $type): void;
 

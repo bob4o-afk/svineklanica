@@ -6,6 +6,11 @@ export const BRAND = {
   short: 'СК',
   tagline: 'корупцията на показ',
   repoUrl: 'https://github.com/BabyNejii/corruption-fucker',
+  /** Official social profiles — used as `og:see_also` in the SEO head (and footer links). */
+  socials: {
+    github: 'https://github.com/BabyNejii/corruption-fucker',
+    instagram: 'https://www.instagram.com/borislav_milanov_/',
+  },
 } as const;
 
 export type Brand = typeof BRAND;

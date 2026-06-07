@@ -9,6 +9,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Support\Facades\RateLimiter;
+use Modules\Identity\Http\Middleware\AdminWhitelistMiddleware;
 use Modules\Identity\Http\Middleware\BlacklistMiddleware;
 use Modules\Identity\Security\Fingerprint\RequestFingerprint;
 use Modules\Notifications\Actions\SendNotificationAction;
@@ -47,6 +48,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // registered OUTSIDE this group (IdentityServiceProvider), so a trapped
         // attacker still gets fake data, not a 403.
         $middleware->prependToGroup('api', BlacklistMiddleware::class);
+
+        // Admin allow-list gate (security.md §4): a NON-whitelisted caller touching
+        // `/api/admin/*` (the admin login + console) is treated as an intruder — auto-blacklisted
+        // and 404'd. Public endpoints and `/api/login` are never gated (the middleware no-ops off
+        // the admin namespace). Appended so it runs after the blacklist gate but before the
+        // route's own throttle/auth. Opt-in: stands down when no SECURITY_IP_WHITELIST is set.
+        $middleware->appendToGroup('api', AdminWhitelistMiddleware::class);
 
         // The persistent device-id cookie is a non-secret tracking signal, not an
         // auth token. Keep it OUT of cookie encryption so the blacklist gate reads

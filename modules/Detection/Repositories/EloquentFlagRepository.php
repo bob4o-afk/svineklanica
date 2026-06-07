@@ -53,6 +53,24 @@ final class EloquentFlagRepository implements FlagRepository
         return $grouped;
     }
 
+    public function representativeFlagIds(): array
+    {
+        $grouped = [];
+        // Highest score first → the first row seen per subject is its representative.
+        Flag::query()
+            ->whereNotNull('subject_id')
+            ->orderBy('subject_type')
+            ->orderBy('subject_id')
+            ->orderByDesc('score')
+            ->get(['subject_type', 'subject_id', 'public_id'])
+            ->each(function (Flag $flag) use (&$grouped): void {
+                $grouped[$flag->subject_type] ??= [];
+                $grouped[$flag->subject_type][(int) $flag->subject_id] ??= (string) $flag->public_id;
+            });
+
+        return $grouped;
+    }
+
     public function deleteByType(FlagType $type): void
     {
         Flag::query()->where('type', $type)->delete();

@@ -8,7 +8,18 @@ export function HomePage() {
   const { t } = useTranslation();
   return (
     <>
-      <AppSeo description={t('common:seo.description')} />
+      <AppSeo
+        description={t('common:seo.description')}
+        keywords={[
+          'Парите са обществени Прозрачността не е',
+          'обществени поръчки България',
+          'съмнителни обществени поръчки',
+          'обществени плащания',
+          'СЕБРА',
+          'ЦАИС ЕОП',
+          'свинекланица',
+        ]}
+      />
       <HomeView />
     </>
   );

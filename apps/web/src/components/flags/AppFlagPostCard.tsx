@@ -9,11 +9,13 @@ import { paths } from '@/routes/paths';
 import { fonts } from '@/theme/typography';
 import { palette } from '@/theme/tokens';
 import type { FlagPost, FlagSubject } from '@/types/api';
+import { AppCategoryBadge } from './AppCategoryBadge';
 import { AppEvidenceList } from './AppEvidenceList';
 import { AppFlagBadge } from './AppFlagBadge';
 import { AppSectorBadge } from './AppSectorBadge';
 import { AppSeverityChip } from './AppSeverityChip';
 import { AppSourceLink } from './AppSourceLink';
+import { AppSphereBadge } from './AppSphereBadge';
 import { AppTag } from './AppTag';
 
 /** The single subject line for a flag, chosen by its subject type. */
@@ -32,7 +34,8 @@ export interface AppFlagPostCardProps {
  *  sits OUTSIDE the CardActionArea so we never nest an <a> inside the navigation button. */
 export function AppFlagPostCard({ flag }: AppFlagPostCardProps) {
   const { t } = useTranslation();
-  const headline = flag.title ?? t(flagTypeMeta[flag.type].i18nKey);
+  const typeMeta = flagTypeMeta[flag.type];
+  const headline = flag.title ?? (typeMeta !== undefined ? t(typeMeta.i18nKey) : flag.type);
   const subject = subjectLine(flag.subject);
   const primarySource = flag.sources[0];
 
@@ -42,8 +45,13 @@ export function AppFlagPostCard({ flag }: AppFlagPostCardProps) {
       <Box sx={{ height: 2, bgcolor: palette.alarm, flexShrink: 0 }} />
       <CardActionArea component={RouterLink} to={paths.post(flag.public_id)}>
         <CardContent>
+          {/* Sphere → Category → severity (+score %) — the §1.0 hierarchy, then type/sector/tags. */}
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }} alignItems="center">
-            <AppSeverityChip severity={flag.severity} />
+            {flag.sphere !== undefined ? <AppSphereBadge sphere={flag.sphere} /> : null}
+            {flag.corruption_category !== undefined ? (
+              <AppCategoryBadge category={flag.corruption_category} />
+            ) : null}
+            <AppSeverityChip severity={flag.severity} {...(flag.score !== undefined ? { score: flag.score } : {})} />
             <AppFlagBadge type={flag.type} />
             {flag.category !== undefined ? <AppSectorBadge sector={flag.category} /> : null}
             {(flag.tags ?? []).map((tag) => (

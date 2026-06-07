@@ -17,7 +17,7 @@ describe('admin API seam (MSW)', () => {
     ).rejects.toHaveProperty('status', 422);
 
     const ok = await http.post<AdminUser>('/admin/login', CREDS);
-    expect(ok.data.role).toBe('admin');
+    expect(ok.data.isAdmin).toBe(true);
     const me = await http.get<AdminUser>('/admin/me');
     expect(me.data.email).toBe(CREDS.email);
   });

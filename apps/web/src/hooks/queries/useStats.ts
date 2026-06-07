@@ -11,6 +11,9 @@ export function useStats() {
       const response = await http.get<PlatformStats>('/stats');
       return response.data;
     },
+    // Cache like the feed (frontend.md §9): fresh 5 min, kept 30 min so navigating
+    // home → away → home serves the counters instantly instead of re-hitting the API.
     staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
   });
 }

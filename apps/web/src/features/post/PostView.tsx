@@ -6,11 +6,13 @@ import { AppButton } from '@/components/controls/AppButton';
 import { AppErrorState } from '@/components/feedback/AppErrorState';
 import { AppSkeleton } from '@/components/feedback/AppSkeleton';
 import { AppSeo } from '@/components/layout/AppSeo';
+import { AppCategoryBadge } from '@/components/flags/AppCategoryBadge';
 import { AppEvidenceList } from '@/components/flags/AppEvidenceList';
 import { AppFlagBadge } from '@/components/flags/AppFlagBadge';
 import { AppSectorBadge } from '@/components/flags/AppSectorBadge';
 import { AppSeverityChip } from '@/components/flags/AppSeverityChip';
 import { AppSourceLink } from '@/components/flags/AppSourceLink';
+import { AppSphereBadge } from '@/components/flags/AppSphereBadge';
 import { AppTag } from '@/components/flags/AppTag';
 import { AppTldr } from '@/components/flags/AppTldr';
 import { useFlagPost } from '@/hooks/queries/useFlagPost';
@@ -51,8 +53,13 @@ export function PostView({ publicId }: PostViewProps) {
         {t('common:actions.back')}
       </AppButton>
 
+      {/* Sphere → Category → severity (+score %) — the §1.0 hierarchy, then type/sector/tags. */}
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-        <AppSeverityChip severity={flag.severity} />
+        {flag.sphere !== undefined ? <AppSphereBadge sphere={flag.sphere} /> : null}
+        {flag.corruption_category !== undefined ? (
+          <AppCategoryBadge category={flag.corruption_category} />
+        ) : null}
+        <AppSeverityChip severity={flag.severity} {...(flag.score !== undefined ? { score: flag.score } : {})} />
         <AppFlagBadge type={flag.type} />
         {flag.category !== undefined ? <AppSectorBadge sector={flag.category} /> : null}
         {(flag.tags ?? []).map((tag) => (

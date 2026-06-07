@@ -192,6 +192,18 @@ jobs:
             export SCRAPE_SOURCES="${{ vars.SCRAPE_SOURCES }}"
             bash scripts/pipeline.sh || echo "data pipeline failed (continuing — deploy still succeeds)"
 
+            # --- Guarantee the HOURLY refresh cron is installed (idempotent).
+            # Every deploy converges the schedule instead of relying on a manual
+            # `crontab -e` (DEPLOY.md §6.1). We strip any prior pipeline.sh line and
+            # re-add the canonical one, so re-deploys never duplicate it and a path
+            # change is picked up. Runs at :05 hourly; cron stdout → a log in the
+            # deploy dir (guaranteed writable by this user, unlike /var/log).
+            # grep -v returns 1 when nothing matches, but echo is the subshell's last
+            # command so it always exits 0 — `set -e` stays happy.
+            CRON_LINE="5 * * * * cd ${{ secrets.DEPLOY_PATH }} && /usr/bin/bash scripts/pipeline.sh >> ${{ secrets.DEPLOY_PATH }}/logs/pipeline-cron.log 2>&1"
+            ( crontab -l 2>/dev/null | grep -vF 'scripts/pipeline.sh'; echo "$CRON_LINE" ) | crontab -
+            echo "Hourly pipeline cron ensured:"; crontab -l | grep -F 'scripts/pipeline.sh'
+
   # --- Email notifications: one when the deploy STARTS, one on SUCCESS,
   #     one on FAILURE (saying which stage failed). All via the same SMTP secrets.
   notify-start:

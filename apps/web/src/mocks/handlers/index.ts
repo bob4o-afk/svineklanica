@@ -1,9 +1,12 @@
 import { http, HttpResponse } from 'msw';
 import { regionName } from '@/lib/regions';
 import type {
+  CorruptionTax,
+  CorruptionTaxCase,
   FlagPost,
   FlagSeverity,
   FlagType,
+  MoneyAmount,
   Paginated,
   ProcurementSector,
   RegionAggregate,
@@ -25,12 +28,23 @@ function paginate<T>(items: T[], page: number, perPage: number): Paginated<T> {
   return { data: items.slice(start, start + perPage), page, per_page: perPage, total: items.length };
 }
 
+// Canonical feed order (mirrors EloquentPresentationRepository): latest first, then by
+// severity (score), finally by views — each key fully tie-breaks the next.
 function byNewest(a: FlagPost, b: FlagPost): number {
-  return b.detected_at.localeCompare(a.detected_at);
+  const date = b.detected_at.localeCompare(a.detected_at);
+  if (date !== 0) return date;
+  const sev = SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity];
+  if (sev !== 0) return sev;
+  return (b.view_count ?? 0) - (a.view_count ?? 0);
 }
 
 function bySeverity(a: FlagPost, b: FlagPost): number {
   const diff = SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity];
+  return diff !== 0 ? diff : byNewest(a, b);
+}
+
+function byViews(a: FlagPost, b: FlagPost): number {
+  const diff = (b.view_count ?? 0) - (a.view_count ?? 0);
   return diff !== 0 ? diff : byNewest(a, b);
 }
 
@@ -61,7 +75,7 @@ export const handlers = [
         (f) => (f.title ?? '').toLowerCase().includes(q) || f.explanation_bg.toLowerCase().includes(q),
       );
     }
-    items.sort(sort === 'severity' ? bySeverity : byNewest);
+    items.sort(sort === 'severity' ? bySeverity : sort === 'views' ? byViews : byNewest);
 
     return HttpResponse.json(paginate(items, page, perPage));
   }),
@@ -127,6 +141,44 @@ export const handlers = [
       flag_count: count,
     }));
     return HttpResponse.json(aggregates);
+  }),
+
+  http.get('/api/insights/corruption-tax', ({ request }) => {
+    const taxes = Math.max(0, Number(new URL(request.url).searchParams.get('taxes_paid') ?? '0') || 0);
+    const flags = store.approvedFlagList().slice(0, 5);
+    const TOTAL = 11_000_000; // mock total public spend
+    const baseAmounts = [1_200_000, 980_000, 640_000, 420_000, 350_000];
+    const scoreOf: Record<FlagSeverity, number> = { critical: 91, high: 72, medium: 50, low: 30 };
+    const money = (amount: number): MoneyAmount => ({ amount, currency: 'BGN', vat_included: true });
+    const round2 = (n: number): number => Math.round(n * 100) / 100;
+
+    const topCases: CorruptionTaxCase[] = flags.map((f, i) => {
+      const amount = baseAmounts[i] ?? 200_000;
+      const score = scoreOf[f.severity];
+      const weight = score / 100;
+      return {
+        kind: 'tender',
+        title: f.title ?? f.subject.tender?.title ?? 'Обществена поръчка',
+        amount: money(amount),
+        score,
+        source_url: f.sources[0]?.url ?? 'https://ted.europa.eu/',
+        user_share: money(round2((taxes * amount * weight) / TOTAL)),
+        flag_public_id: f.public_id,
+      };
+    });
+
+    const flagged = topCases.reduce((sum, c) => sum + c.amount.amount * (c.score / 100), 0);
+    const rate = TOTAL > 0 ? flagged / TOTAL : 0;
+    const result: CorruptionTax = {
+      taxes_paid: money(taxes),
+      corruption_rate: Math.round(rate * 10000) / 10000,
+      user_corruption_amount: money(round2(taxes * rate)),
+      total_spend: money(TOTAL),
+      flagged_spend: money(round2(flagged)),
+      per_sphere: [],
+      top_cases: topCases,
+    };
+    return HttpResponse.json(result);
   }),
 
   http.get('/api/search', ({ request }) => {

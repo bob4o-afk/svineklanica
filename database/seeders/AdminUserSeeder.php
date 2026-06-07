@@ -6,7 +6,6 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 /**
  * Seeds the admin account. The app is PUBLIC read-only — citizens browse with no
@@ -34,9 +33,12 @@ class AdminUserSeeder extends Seeder
             return;
         }
 
+        // Pass the PLAIN password — the User model's `password => hashed` cast hashes it once.
+        // (Hashing here too would double-hash it, so the plain password would never match — that
+        // was the "Грешен имейл или парола" bug.)
         $admin = User::updateOrCreate(
             ['email' => self::ADMIN_EMAIL],
-            ['name' => 'Bobinkata', 'password' => Hash::make(self::ADMIN_PASSWORD)],
+            ['name' => 'Bobinkata', 'password' => self::ADMIN_PASSWORD],
         );
         $admin->is_admin = true; // explicit grant — bypasses mass-assignment guard
         $admin->save();

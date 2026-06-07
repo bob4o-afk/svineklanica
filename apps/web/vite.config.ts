@@ -4,27 +4,74 @@ import { defineConfig } from 'vitest/config';
 import type { Plugin } from 'vite';
   import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { BRAND } from './src/config/brand';
 import { palette } from './src/theme/tokens';
+
+// Public site origin (matches public/sitemap.xml + robots.txt). Change if the domain differs.
+const SITE_URL = 'https://bobinkata.com';
+
+// Schema.org JSON-LD (Organization + WebSite + SearchAction) → richer Google results / sitelinks /
+// search box. Injected into <head> as <script type="application/ld+json"> by structuredDataPlugin.
+// It's a single fixed string so its hash is stable; that hash is allow-listed in the prod CSP
+// below (dev allows it via 'unsafe-inline'). Edit this string and the hash updates automatically.
+const STRUCTURED_DATA = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}/#organization`,
+      name: BRAND.name,
+      alternateName: 'Svineklanitsa Watchdog',
+      url: `${SITE_URL}/`,
+      description:
+        'Парите са обществени. Прозрачността — не. Откриваме съмнителни обществени поръчки и плащания в България и показваме къде отиват парите ти.',
+      logo: `${SITE_URL}/pwa-512x512.png`,
+      sameAs: [BRAND.socials.instagram, BRAND.socials.github],
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}/#website`,
+      url: `${SITE_URL}/`,
+      name: BRAND.name,
+      inLanguage: 'bg',
+      publisher: { '@id': `${SITE_URL}/#organization` },
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: { '@type': 'EntryPoint', urlTemplate: `${SITE_URL}/search?q={search_term_string}` },
+        'query-input': 'required name=search_term_string',
+      },
+    },
+  ],
+});
+
+// The browser hashes the EXACT text content of the inline <script>, so hashing the same string we
+// inject guarantees the CSP allow-list matches byte-for-byte.
+const STRUCTURED_DATA_SHA256 = createHash('sha256').update(STRUCTURED_DATA, 'utf8').digest('base64');
 
 // The production CSP — strict: no `'unsafe-inline'` on script-src and no `ws:` (those are dev-only
 // Vite needs). 'unsafe-inline' stays on style-src because Emotion injects <style> at runtime.
 // The <meta> in index.html carries the looser DEV policy; this swaps in the tight one at build.
 // Real HTTP headers (incl. frame-ancestors + HSTS) land in Caddy/nginx in Phase 5.
+// NB: `frame-ancestors` is intentionally NOT here — browsers IGNORE it when CSP is delivered via
+// a <meta> tag (it's only valid in a real HTTP header), so it just logs a console warning. Framing
+// is blocked by the `X-Frame-Options: DENY` header Caddy already sends (security.md §8); the real
+// prod CSP header (Caddy/nginx) is where `frame-ancestors 'none'` belongs.
 const PROD_CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  // Allow our own scripts + the one inline JSON-LD block (by hash — no 'unsafe-inline').
+  `script-src 'self' 'sha256-${STRUCTURED_DATA_SHA256}'`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
-  "font-src 'self'",
+  // `data:` so inline/base64 font faces (e.g. @fontsource latin-ext subsets) aren't blocked.
+  "font-src 'self' data:",
   "connect-src 'self'",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "frame-ancestors 'none'",
   'upgrade-insecure-requests',
 ].join('; ');
 
@@ -41,11 +88,30 @@ function prodCspPlugin(): Plugin {
   };
 }
 
+/** Inject the Schema.org JSON-LD into <head> (dev + build). Its hash is allow-listed in PROD_CSP;
+ *  in dev the meta CSP's 'unsafe-inline' covers it. Children is the exact hashed string. */
+function structuredDataPlugin(): Plugin {
+  return {
+    name: 'cf-structured-data',
+    transformIndexHtml() {
+      return [
+        {
+          tag: 'script',
+          attrs: { type: 'application/ld+json' },
+          children: STRUCTURED_DATA,
+          injectTo: 'head',
+        },
+      ];
+    },
+  };
+}
+
 // "Mobile" = this same app as an installable, mobile-first PWA. (frontend.md §0)
 export default defineConfig({
   plugins: [
     react(),
     prodCspPlugin(),
+    structuredDataPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       // We register the SW ourselves from app code (src/lib/pwa.ts) — that's what lets us

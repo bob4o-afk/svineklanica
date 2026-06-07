@@ -15,7 +15,7 @@ use Modules\Presentation\Data\CompanyRefData;
 use Modules\Presentation\Data\EntityStatsData;
 use Modules\Presentation\Data\PaginatedFlagPostData;
 use Modules\Presentation\Data\SearchResultsData;
-use Modules\Presentation\Data\TenderRefData;
+use Modules\Presentation\Services\SearchService;
 use Spatie\LaravelData\Optional;
 
 /** Entity profiles (authority, company) + global search (contract `/authorities`, `/companies`, `/search`). */
@@ -24,7 +24,10 @@ final class EntityController
     /** Below this the search box is just noise; mirror the frontend's SEARCH_MIN_LENGTH. */
     private const SEARCH_MIN_LENGTH = 2;
 
-    public function __construct(private readonly PresentationRepository $repo) {}
+    public function __construct(
+        private readonly PresentationRepository $repo,
+        private readonly SearchService $search,
+    ) {}
 
     public function authority(string $publicId): AuthorityDetailData
     {
@@ -64,14 +67,9 @@ final class EntityController
             return new SearchResultsData(authorities: [], companies: [], tenders: []);
         }
 
-        return new SearchResultsData(
-            authorities: $this->repo->searchAuthorities($q)
-                ->map(static fn ($a): AuthorityRefData => AuthorityRefData::fromModel($a))->all(),
-            companies: $this->repo->searchCompanies($q)
-                ->map(static fn ($c): CompanyRefData => CompanyRefData::fromModel($c))->all(),
-            tenders: $this->repo->searchTenders($q)
-                ->map(static fn ($t): TenderRefData => TenderRefData::fromModel($t))->all(),
-        );
+        // Semantic "close results" via Google embeddings + pgvector, with a keyword
+        // fallback baked into the service (CLAUDE.md §1.2).
+        return $this->search->search($q);
     }
 
     /**

@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AboutPage } from '@/pages/AboutPage';
 import { AuthorityPage } from '@/pages/AuthorityPage';
+import { CalculatorPage } from '@/pages/CalculatorPage';
 import { CompanyPage } from '@/pages/CompanyPage';
 import { FeedPage } from '@/pages/FeedPage';
 import { HomePage } from '@/pages/HomePage';
@@ -17,6 +18,7 @@ import { AdminPendingPage } from '@/pages/admin/AdminPendingPage';
 import { AdminReviewPage } from '@/pages/admin/AdminReviewPage';
 import { AdminSourcesPage } from '@/pages/admin/AdminSourcesPage';
 import { AdminLayout } from '@/features/admin/AdminLayout';
+import { AdminSection } from '@/features/admin/AdminSection';
 import { ProtectedRoute } from './ProtectedRoute';
 import { paths, patterns } from './paths';
 
@@ -35,18 +37,27 @@ export const router = createBrowserRouter([
       { path: patterns.price, element: <PricePage /> },
       { path: patterns.network, element: <NetworkPage /> },
       { path: paths.map, element: <MapPage /> },
+      { path: paths.calculator, element: <CalculatorPage /> },
       { path: paths.about, element: <AboutPage /> },
-      { path: paths.adminLogin, element: <AdminLoginPage /> },
       {
-        element: <ProtectedRoute />,
+        // The whole admin subtree (login + protected console) mounts AuthProvider here, so the
+        // `/api/admin/me` session probe runs ONLY in the admin area — never on public pages,
+        // which would self-blacklist against the IP-gated admin namespace (security.md §4).
+        element: <AdminSection />,
         children: [
+          { path: paths.adminLogin, element: <AdminLoginPage /> },
           {
-            element: <AdminLayout />,
+            element: <ProtectedRoute />,
             children: [
-              { path: paths.admin, element: <AdminDashboardPage /> },
-              { path: paths.adminPending, element: <AdminPendingPage /> },
-              { path: patterns.adminReview, element: <AdminReviewPage /> },
-              { path: paths.adminSources, element: <AdminSourcesPage /> },
+              {
+                element: <AdminLayout />,
+                children: [
+                  { path: paths.admin, element: <AdminDashboardPage /> },
+                  { path: paths.adminPending, element: <AdminPendingPage /> },
+                  { path: patterns.adminReview, element: <AdminReviewPage /> },
+                  { path: paths.adminSources, element: <AdminSourcesPage /> },
+                ],
+              },
             ],
           },
         ],

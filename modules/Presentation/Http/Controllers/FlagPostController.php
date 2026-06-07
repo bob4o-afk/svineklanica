@@ -13,7 +13,7 @@ use Modules\Presentation\Services\FlagViewService;
 
 /**
  * Public, read-only flag-post feed — the citizen entry point (contract `/flag-posts`).
- * Filterable by type / sector / severity / region / text; sorted newest or by severity.
+ * Filterable by type / sector / severity / region / text; sorted newest, by severity, or by views.
  * The route key is the flag's `public_id` (a UUIDv7), never the internal id (backend.md §7).
  */
 final class FlagPostController

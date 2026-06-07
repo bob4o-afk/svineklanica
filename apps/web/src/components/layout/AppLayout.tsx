@@ -5,6 +5,7 @@ import { AppContainer } from './AppContainer';
 import { AppFooter } from './AppFooter';
 import { AppHeader } from './AppHeader';
 import { AppInstallPrompt } from './AppInstallPrompt';
+import { AppNavProgress } from './AppNavProgress';
 import { AppWatermark } from './AppWatermark';
 
 /** The shared frame for every route: header, the routed page (guarded by an
@@ -12,6 +13,8 @@ import { AppWatermark } from './AppWatermark';
 export function AppLayout() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100%', position: 'relative' }}>
+      {/* Red top progress bar — flashes on navigation + while data loads. */}
+      <AppNavProgress />
       {/* Scroll to top on every new navigation; restore position on back/forward. */}
       <ScrollRestoration />
       <AppWatermark />

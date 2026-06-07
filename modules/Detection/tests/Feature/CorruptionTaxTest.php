@@ -53,6 +53,7 @@ it('computes the score-weighted corruption rate and the user projection', functi
         ->and($result->topCases[0]->score)->toBe(100)
         ->and($result->topCases[0]->userShare)->toBe(200.0)  // 1000 × 100k × 1.0 / 500k
         ->and($result->topCases[0]->sourceUrl)->not->toBeEmpty()
+        ->and($result->topCases[0]->flagPublicId)->not->toBeNull()  // links to a readable flag-post
         ->and($result->topCases[1]->score)->toBe(50)
         ->and($result->topCases[1]->userShare)->toBe(100.0); // 1000 × 100k × 0.5 / 500k
 });

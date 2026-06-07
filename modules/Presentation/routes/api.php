@@ -24,8 +24,12 @@ Route::middleware('throttle:public')->group(function (): void {
     // Home hero counters (real totals, not hardcoded).
     Route::get('/stats', [InsightController::class, 'stats'])->name('stats');
 
+    // Corruption-tax calculator — "what % of your taxes funded flagged deals".
+    Route::get('/insights/corruption-tax', [InsightController::class, 'corruptionTax'])->name('insights.corruption-tax');
+
     // Flagship visualisations + the map aggregate.
     Route::get('/price-series/{key}', [InsightController::class, 'priceSeries'])->name('price-series.show');
     Route::get('/regions/aggregate', [InsightController::class, 'regions'])->name('regions.aggregate');
+    Route::get('/map/flag-points', [InsightController::class, 'mapPoints'])->name('map.flag-points');
     Route::get('/graphs/serial-winner/{publicId}', [InsightController::class, 'serialWinnerGraph'])->name('graphs.serial-winner');
 });

@@ -28,6 +28,14 @@ interface PresentationRepository
 
     public function countFlags(): int;
 
+    /**
+     * Every flag that carries a location (denormalised `region_code`), for pinning on the map.
+     * Lightweight: only the columns the map needs.
+     *
+     * @return Collection<int, Flag>
+     */
+    public function flagMapPoints(): Collection;
+
     public function findFlag(string $publicId): ?Flag;
 
     public function findAuthority(string $publicId): ?ContractingAuthority;
@@ -73,4 +81,27 @@ interface PresentationRepository
 
     /** @return Collection<int, Tender> */
     public function searchTenders(string $q, int $limit = 10): Collection;
+
+    /**
+     * Semantic search: the rows nearest the query embedding by pgvector cosine
+     * distance (CLAUDE.md §1.2 — "close results"). The embedding has
+     * config('vector.dimensions') floats and comes from the same model the
+     * `search:embed` command used. Rows without an embedding are excluded.
+     *
+     * @param  list<float>  $embedding
+     * @return Collection<int, ContractingAuthority>
+     */
+    public function searchAuthoritiesByVector(array $embedding, int $limit = 10): Collection;
+
+    /**
+     * @param  list<float>  $embedding
+     * @return Collection<int, Company>
+     */
+    public function searchCompaniesByVector(array $embedding, int $limit = 10): Collection;
+
+    /**
+     * @param  list<float>  $embedding
+     * @return Collection<int, Tender>
+     */
+    public function searchTendersByVector(array $embedding, int $limit = 10): Collection;
 }

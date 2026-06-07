@@ -9,6 +9,9 @@ use Laravel\Sanctum\Sanctum;
 // session middleware (cookie auth). Simulate that for the login flow.
 beforeEach(function () {
     $this->withHeader('Origin', 'http://localhost');
+    // The operator's .env may whitelist 127.0.0.1 (the test client); reset so the
+    // perimeter treats it as an untrusted caller (tests opt into the whitelist).
+    config(['security.whitelist.ips' => []]);
 });
 
 it('lets an admin log in and returns their public-safe user', function () {
@@ -17,7 +20,7 @@ it('lets an admin log in and returns their public-safe user', function () {
         'password' => 'secret-pass-1',
     ]);
 
-    $response = $this->postJson('/api/login', [
+    $response = $this->postJson('/api/admin/login', [
         'email' => 'admin@test.com',
         'password' => 'secret-pass-1',
     ]);
@@ -32,17 +35,17 @@ it('lets an admin log in and returns their public-safe user', function () {
 it('rejects invalid credentials', function () {
     User::factory()->create(['email' => 'u@test.com', 'password' => 'right-pass']);
 
-    $this->postJson('/api/login', ['email' => 'u@test.com', 'password' => 'wrong'])
+    $this->postJson('/api/admin/login', ['email' => 'u@test.com', 'password' => 'wrong'])
         ->assertStatus(422)
         ->assertJsonValidationErrors('email');
 });
 
 it('throttles brute-force login attempts', function () {
     for ($i = 0; $i < 6; $i++) {
-        $this->postJson('/api/login', ['email' => 'x@test.com', 'password' => 'nope']);
+        $this->postJson('/api/admin/login', ['email' => 'x@test.com', 'password' => 'nope']);
     }
 
-    $this->postJson('/api/login', ['email' => 'x@test.com', 'password' => 'nope'])
+    $this->postJson('/api/admin/login', ['email' => 'x@test.com', 'password' => 'nope'])
         ->assertStatus(429);
 });
 

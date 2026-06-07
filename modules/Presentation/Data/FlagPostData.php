@@ -31,6 +31,10 @@ final class FlagPostData extends Data
     public function __construct(
         public string $publicId,
         public string $type,
+        // The §1.0 hierarchy the citizen browses by: Sphere → Category → severity (+ score %).
+        public string|Optional $sphere,
+        public string|Optional $corruptionCategory,
+        public int $score,
         public string|Optional $category,
         public string $severity,
         public string $status,
@@ -91,6 +95,9 @@ final class FlagPostData extends Data
         return new self(
             publicId: $flag->public_id,
             type: ContractEnums::flagType($flag->type),
+            sphere: $flag->sphere !== null ? ContractEnums::sphere($flag->sphere) : Optional::create(),
+            corruptionCategory: $flag->category !== null ? ContractEnums::corruptionCategory($flag->category) : Optional::create(),
+            score: (int) ($flag->score ?? 0),
             category: $category,
             severity: ContractEnums::severity($flag->severity),
             status: 'approved',

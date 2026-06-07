@@ -36,11 +36,14 @@ final class EloquentPresentationRepository implements PresentationRepository
                 });
             });
 
-        if ($filter->sort === 'severity') {
-            $query->orderByDesc('score')->orderByDesc('detected_at');
-        } else {
-            $query->orderByDesc('detected_at')->orderByDesc('score');
-        }
+        // Each sort fully tie-breaks down the same three keys (recency / suspicion score /
+        // view_count) so the order is total and stable — only the leading key changes.
+        match ($filter->sort) {
+            'severity' => $query->orderByDesc('score')->orderByDesc('detected_at')->orderByDesc('view_count'),
+            'views' => $query->orderByDesc('view_count')->orderByDesc('detected_at')->orderByDesc('score'),
+            // newest (default): latest first, then by severity (score), finally by views.
+            default => $query->orderByDesc('detected_at')->orderByDesc('score')->orderByDesc('view_count'),
+        };
 
         return $query->paginate($filter->perPage, ['*'], 'page', $filter->page);
     }
@@ -53,6 +56,16 @@ final class EloquentPresentationRepository implements PresentationRepository
     public function countFlags(): int
     {
         return Flag::query()->count();
+    }
+
+    /** @return Collection<int, Flag> */
+    public function flagMapPoints(): Collection
+    {
+        return Flag::query()
+            ->whereNotNull('region_code')
+            ->where('region_code', '!=', '')
+            ->orderByDesc('severity')
+            ->get(['id', 'public_id', 'severity', 'type', 'region_code', 'title']);
     }
 
     public function findFlag(string $publicId): ?Flag
@@ -230,6 +243,49 @@ final class EloquentPresentationRepository implements PresentationRepository
 
         return Tender::query()
             ->where('title', 'ilike', $term)
+            ->limit($limit)
+            ->get();
+    }
+
+    public function searchAuthoritiesByVector(array $embedding, int $limit = 10): Collection
+    {
+        return $this->nearest(ContractingAuthority::query(), 'name_embedding', $embedding, $limit);
+    }
+
+    public function searchCompaniesByVector(array $embedding, int $limit = 10): Collection
+    {
+        return $this->nearest(Company::query(), 'name_embedding', $embedding, $limit);
+    }
+
+    public function searchTendersByVector(array $embedding, int $limit = 10): Collection
+    {
+        return $this->nearest(Tender::query(), 'description_embedding', $embedding, $limit);
+    }
+
+    /**
+     * Order a query by pgvector cosine distance to the given embedding and take the
+     * nearest `$limit`. The vector is passed as a bound parameter cast to `vector`
+     * (`?::vector`) — never string-concatenated into SQL (security.md §6) — and the
+     * `<=>` operator uses the cosine index from config/vector.php. Rows without an
+     * embedding are excluded so they don't pollute the "close results".
+     *
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Builder<TModel>  $query
+     * @param  list<float>  $embedding
+     * @return Collection<int, TModel>
+     */
+    private function nearest(Builder $query, string $column, array $embedding, int $limit): Collection
+    {
+        if ($embedding === []) {
+            return new Collection;
+        }
+
+        $literal = '['.implode(',', array_map(static fn ($v): string => (string) (float) $v, $embedding)).']';
+
+        return $query
+            ->whereNotNull($column)
+            ->orderByRaw("{$column} <=> ?::vector", [$literal])
             ->limit($limit)
             ->get();
     }

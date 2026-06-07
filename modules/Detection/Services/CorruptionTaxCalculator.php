@@ -36,6 +36,9 @@ final class CorruptionTaxCalculator
             $this->toWeights($flagged['payment'] ?? []),
         );
 
+        // Per-subject link to a readable flag-post (highest-scoring flag).
+        $flagIds = $this->flags->representativeFlagIds();
+
         $total = $summary->totalSpend;
         $rate = $total > 0.0 ? $summary->flaggedSpend / $total : 0.0;
 
@@ -69,6 +72,7 @@ final class CorruptionTaxCalculator
                     score: (int) round($c->weight * 100),
                     // Score-weighted: your share of this case = taxes × (value × weight) / total.
                     userShare: $this->money($total > 0.0 ? $taxesPaid * $c->amount * $c->weight / $total : 0.0),
+                    flagPublicId: $flagIds[$c->kind][$c->subjectId] ?? null,
                 ),
                 $summary->topCases,
             ),

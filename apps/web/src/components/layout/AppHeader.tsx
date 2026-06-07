@@ -16,6 +16,7 @@ import { type AppNavItem, AppNavDrawer } from './AppNavDrawer';
 const NAV_ITEMS: ReadonlyArray<AppNavItem> = [
   { to: paths.feed, labelKey: 'common:nav.feed' },
   { to: paths.map, labelKey: 'common:nav.map' },
+  { to: paths.calculator, labelKey: 'common:nav.calculator' },
   { to: paths.about, labelKey: 'common:nav.about' },
 ];
 

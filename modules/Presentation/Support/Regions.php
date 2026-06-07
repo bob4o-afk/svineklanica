@@ -48,4 +48,73 @@ final class Regions
     {
         return self::NAMES[$code] ?? $code;
     }
+
+    /**
+     * Free-text (bare city / oblast names, as the ingest carries them) → NUTS3 code. Resolves the
+     * София grad/oblast ambiguity to grad, and a few common spellings. Checked BEFORE the
+     * derived-from-NAMES lookup so it wins on overlaps.
+     *
+     * @var array<string, string>
+     */
+    private const ALIASES = [
+        'софия' => 'BG411',
+        'софия град' => 'BG411',
+        'софия-град' => 'BG411',
+        'столична' => 'BG411',
+        'столична община' => 'BG411',
+        'софийска' => 'BG412',
+        'софийска област' => 'BG412',
+        'велико търново' => 'BG321',
+        'търговище' => 'BG334',
+        'стара загора' => 'BG344',
+    ];
+
+    /**
+     * Reverse lookup: a Bulgarian region/oblast NAME (or an already-valid NUTS code) → its NUTS3
+     * code, or null if unrecognised. Used to normalise the free-text `region` the ingest stores
+     * into the canonical code the map + aggregates join on (data-sources.md geo normalisation).
+     */
+    public static function code(?string $name): ?string
+    {
+        if ($name === null) {
+            return null;
+        }
+
+        $raw = trim($name);
+        if ($raw === '') {
+            return null;
+        }
+
+        // Already a NUTS code (BG311, bg411, …)?
+        $upper = strtoupper($raw);
+        if (isset(self::NAMES[$upper])) {
+            return $upper;
+        }
+
+        $key = self::normalize($raw);
+
+        if (isset(self::ALIASES[$key])) {
+            return self::ALIASES[$key];
+        }
+
+        /** @var array<string, string>|null $byName */
+        static $byName = null;
+        if ($byName === null) {
+            $byName = [];
+            foreach (self::NAMES as $code => $label) {
+                $byName[self::normalize($label)] = $code;
+            }
+        }
+
+        return $byName[$key] ?? null;
+    }
+
+    /** Lowercase, trim, and drop a parenthetical qualifier: "София (град)" → "софия". */
+    private static function normalize(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        $value = preg_replace('/\s*\([^)]*\)\s*/u', '', $value) ?? $value;
+
+        return trim($value);
+    }
 }

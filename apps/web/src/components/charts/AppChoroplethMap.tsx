@@ -4,9 +4,12 @@ import { geoMercator, geoPath } from 'd3-geo';
 import type { FeatureCollection, Geometry } from 'geojson';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { flagTypeMeta } from '@/lib/flags';
+import { type FlagMapPoint, SEVERITY_COLOR } from '@/lib/mapPoints';
 import { regionName } from '@/lib/regions';
 import { palette } from '@/theme/tokens';
-import type { RegionAggregate } from '@/types/api';
+import { fonts } from '@/theme/typography';
+import type { FlagSeverity, FlagType, RegionAggregate } from '@/types/api';
 
 const WIDTH = 800;
 const HEIGHT = 520;
@@ -19,6 +22,15 @@ export interface AppChoroplethMapProps {
   /** Fired the instant a region is clicked (before the animation) so the caller can warm that
    *  region's feed into cache while the transition plays. */
   onRegionPrefetch?: (code: string) => void;
+  /** Individual flags to pin on the map (each at its region centroid, jittered when several
+   *  share a region). Omit for a plain choropleth. */
+  flagPoints?: FlagMapPoint[];
+  /** Clicking a flag marker opens that post. */
+  onSelectFlag?: (publicId: string) => void;
+  /** Play the grow-then-fade exit on region click (for navigating away). Set false when the
+   *  click keeps the user on this screen (e.g. mobile opens a sheet) so the map doesn't fade out.
+   *  Default true. */
+  animateRegionSelect?: boolean;
 }
 
 /** Bulgaria-oblasti choropleth: each province shaded by its flag count (darker red = more).
@@ -31,10 +43,14 @@ export function AppChoroplethMap({
   aggregates,
   onSelectRegion,
   onRegionPrefetch,
+  flagPoints,
+  onSelectFlag,
+  animateRegionSelect = true,
 }: AppChoroplethMapProps) {
   const theme = useTheme();
   const { t } = useTranslation();
   const [hovered, setHovered] = useState<string | null>(null);
+  const [hoveredFlag, setHoveredFlag] = useState<string | null>(null);
   const [exiting, setExiting] = useState<string | null>(null);
 
   const byCode = useMemo(() => {
@@ -45,6 +61,48 @@ export function AppChoroplethMap({
 
   const max = useMemo(() => aggregates.reduce((m, a) => Math.max(m, a.metric), 0), [aggregates]);
   const pathGen = useMemo(() => geoPath(geoMercator().fitSize([WIDTH, HEIGHT], geo)), [geo]);
+
+  // Project each flag to its region centroid. When several flags share a region they're spread in
+  // a small golden-angle spiral so they don't stack into a single dot; a flag whose region has no
+  // polygon match isn't pinned (data-sources.md: no coords → no pin).
+  const markers = useMemo(() => {
+    if (flagPoints === undefined || flagPoints.length === 0) return [];
+    const centroidByCode = new Map<string, [number, number]>();
+    for (const f of geo.features) {
+      const c = pathGen.centroid(f);
+      if (Number.isFinite(c[0]) && Number.isFinite(c[1])) centroidByCode.set(f.properties.NUTS_ID, c);
+    }
+    const seen = new Map<string, number>();
+    const out: Array<{
+      id: string;
+      severity: FlagSeverity;
+      type: FlagType;
+      regionCode: string;
+      title?: string;
+      x: number;
+      y: number;
+    }> = [];
+    for (const fp of flagPoints) {
+      const c = centroidByCode.get(fp.region_code);
+      if (c === undefined) continue;
+      const i = seen.get(fp.region_code) ?? 0;
+      seen.set(fp.region_code, i + 1);
+      const angle = i * 2.399963229728653; // golden angle (radians)
+      const radius = i === 0 ? 0 : 5 + 3 * Math.sqrt(i);
+      out.push({
+        id: fp.public_id,
+        severity: fp.severity,
+        type: fp.type,
+        regionCode: fp.region_code,
+        ...(fp.title !== undefined ? { title: fp.title } : {}),
+        x: c[0] + radius * Math.cos(angle),
+        y: c[1] + radius * Math.sin(angle),
+      });
+    }
+    return out;
+  }, [flagPoints, geo, pathGen]);
+
+  const activeFlag = hoveredFlag !== null ? markers.find((m) => m.id === hoveredFlag) : undefined;
 
   // Borders: clearly stronger than the faint theme divider — especially in light mode.
   const borderColor =
@@ -60,6 +118,13 @@ export function AppChoroplethMap({
   function handleClick(code: string): void {
     if (onSelectRegion === undefined || exiting !== null) return;
     onRegionPrefetch?.(code); // warm the region's feed while the animation plays
+    // The grow-then-fade exit is the page-transition flourish for navigating away. When the
+    // selection stays on this screen (mobile opens a sheet), skip it — otherwise the map would
+    // fade to nothing and never come back, since nothing unmounts it.
+    if (!animateRegionSelect) {
+      onSelectRegion(code);
+      return;
+    }
     setExiting(code);
     window.setTimeout(() => onSelectRegion(code), EXIT_MS);
   }
@@ -126,6 +191,97 @@ export function AppChoroplethMap({
             />
           );
         })}
+
+        {/* Flag pins — one dot per flag at its region centroid, coloured by severity. */}
+        {markers.map((m) => (
+          <circle
+            key={m.id}
+            cx={m.x}
+            cy={m.y}
+            r={hoveredFlag === m.id ? 7 : 5}
+            fill={SEVERITY_COLOR[m.severity]}
+            stroke={theme.palette.background.paper}
+            strokeWidth={1.5}
+            style={{
+              cursor: onSelectFlag !== undefined ? 'pointer' : 'default',
+              opacity: exiting !== null ? 0 : 0.95,
+              transition: 'r 120ms ease, opacity 200ms ease',
+              pointerEvents: exiting !== null ? 'none' : 'auto',
+            }}
+            onMouseEnter={() => setHoveredFlag(m.id)}
+            onMouseLeave={() => setHoveredFlag((cur) => (cur === m.id ? null : cur))}
+            onClick={() => onSelectFlag?.(m.id)}
+          />
+        ))}
+
+        {/* Hover TL;DR — a red-on-black tooltip near the pin (CLAUDE.md punk look). Rendered last
+            so it sits above every pin; SVG so it scales with the map and needs no DOM measuring. */}
+        {activeFlag !== undefined && exiting === null
+          ? (() => {
+              const PAD = 12;
+              const headerH = 18;
+              const headerText = t(flagTypeMeta[activeFlag.type].i18nKey).toUpperCase();
+              const regionText = regionName(activeFlag.regionCode);
+              const rawTitle = activeFlag.title ?? '';
+              const hasTitle = rawTitle !== '';
+              const title = rawTitle.length > 42 ? `${rawTitle.slice(0, 41)}…` : rawTitle;
+              // SVG text can't auto-size its box, so estimate each line's width from its length and
+              // per-font glyph width (Cyrillic-safe factors) and size the box to the widest line —
+              // so the text is always bounded by the box, never overflowing it.
+              const wHeader = headerText.length * 6.4; // mono 10 + letter-spacing
+              const wTitle = hasTitle ? title.length * 7.4 : 0; // display 12 bold
+              const wRegion = regionText.length * 6.1; // mono 10
+              const W = Math.min(
+                Math.max(Math.ceil(Math.max(wHeader, wTitle, wRegion)) + PAD * 2, 132),
+                WIDTH - 8,
+              );
+              const H = 14 + headerH + (hasTitle ? 18 : 0) + 16;
+              const tx = Math.min(Math.max(activeFlag.x - W / 2, 4), WIDTH - W - 4);
+              const above = activeFlag.y - H - 12 >= 0;
+              const ty = above ? activeFlag.y - H - 12 : activeFlag.y + 12;
+              return (
+                <g style={{ pointerEvents: 'none' }}>
+                  <rect
+                    x={tx}
+                    y={ty}
+                    width={W}
+                    height={H}
+                    rx={3}
+                    fill={palette.ink}
+                    stroke={palette.alarm}
+                    strokeWidth={1.5}
+                    opacity={0.97}
+                  />
+                  <text
+                    x={tx + 10}
+                    y={ty + 16}
+                    fill={palette.alarm}
+                    style={{ fontFamily: fonts.mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em' }}
+                  >
+                    {headerText}
+                  </text>
+                  {hasTitle ? (
+                    <text
+                      x={tx + 10}
+                      y={ty + 16 + headerH}
+                      fill={palette.bone}
+                      style={{ fontFamily: fonts.display, fontSize: 12, fontWeight: 700 }}
+                    >
+                      {title}
+                    </text>
+                  ) : null}
+                  <text
+                    x={tx + 10}
+                    y={ty + H - 10}
+                    fill={palette.muted}
+                    style={{ fontFamily: fonts.mono, fontSize: 10, letterSpacing: '0.04em' }}
+                  >
+                    {regionText}
+                  </text>
+                </g>
+              );
+            })()
+          : null}
       </Box>
     </Box>
   );

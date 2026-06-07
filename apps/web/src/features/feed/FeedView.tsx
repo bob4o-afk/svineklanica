@@ -1,6 +1,7 @@
 import { Chip, Stack, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import { AppErrorBoundary } from '@/components/feedback/AppErrorBoundary';
 import type { AppFilterValue } from '@/components/flags/AppFilterBar';
 import { flagTypeMeta, severityMeta } from '@/lib/flags';
 import { regionName } from '@/lib/regions';
@@ -15,7 +16,7 @@ const VALID_SEVERITIES = new Set<string>(Object.keys(severityMeta));
 const VALID_SECTORS = new Set<string>(Object.keys(sectorMeta));
 
 function parseSort(value: string | null): FlagSort {
-  return value === 'severity' ? 'severity' : 'newest';
+  return value === 'severity' || value === 'views' ? value : 'newest';
 }
 
 function parseFilter(params: URLSearchParams): AppFilterValue {
@@ -91,15 +92,20 @@ export function FeedView() {
         />
       ) : null}
       <FeedToolbar sort={sort} onSortChange={setSort} filter={filter} onFilterChange={setFilter} />
-      <FeedList
-        query={{
-          sort,
-          type: filter.type,
-          category: filter.category,
-          severity: filter.severity,
-          ...(region !== null && region !== '' ? { region } : {}),
-        }}
-      />
+      {/* A render-time crash in any card surfaces a recoverable error instead of white-screening
+          the whole feed (frontend.md §7). The boundary is keyed by the active sort/filter so it
+          auto-resets when the user changes them, retrying with the new query. */}
+      <AppErrorBoundary key={JSON.stringify({ sort, ...filter, region })}>
+        <FeedList
+          query={{
+            sort,
+            type: filter.type,
+            category: filter.category,
+            severity: filter.severity,
+            ...(region !== null && region !== '' ? { region } : {}),
+          }}
+        />
+      </AppErrorBoundary>
     </Stack>
   );
 }

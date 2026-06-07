@@ -30,18 +30,20 @@ def _fallback(
     sphere: str = "",
     category: str = "",
 ) -> AggregatorOutput:
+    # Sphere / category / level / score all render as BADGES in the UI (severity chip,
+    # sector + sphere badges, the score %), so the headline stays a clean one-sentence
+    # "what's suspicious" — matching the LLM path (prompts/aggregator.md). Never bake a
+    # "[сфера / категория] ниво (NN/100):" prefix into the title.
     reasons = _top_reasons(signals)
-    prefix = ""
-    if sphere and category:
-        prefix = f"[{sphere} / {category}] "
     if not reasons:
         return AggregatorOutput(
-            headline_bg=f"{prefix}{level}: няма съществени сигнали за корупция.",
-            explanation_bg=f"Оценка {score:.0f}/100. Не са открити значими червени флагове по наличните данни.",
+            headline_bg="Няма съществени сигнали за корупция по наличните данни.",
+            explanation_bg="Не са открити значими червени флагове по наличните данни.",
         )
-    headline = f"{prefix}{level} ({score:.0f}/100): " + reasons[0]
-    explanation = "Основания: " + " ".join(f"• {r}" for r in reasons)
-    return AggregatorOutput(headline_bg=headline, explanation_bg=explanation)
+    return AggregatorOutput(
+        headline_bg=reasons[0],
+        explanation_bg="Основания: " + " ".join(f"• {r}" for r in reasons),
+    )
 
 
 def run(

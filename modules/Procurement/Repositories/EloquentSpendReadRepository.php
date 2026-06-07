@@ -107,6 +107,7 @@ final class EloquentSpendReadRepository implements SpendReadPort
             if ($amount > 0.0) {
                 $cases[] = new FlaggedCaseData(
                     kind: $kind,
+                    subjectId: (int) $r->id,
                     title: (string) $r->title,
                     amount: $amount,
                     currency: (string) ($r->currency ?? self::CURRENCY),

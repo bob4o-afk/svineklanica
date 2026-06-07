@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Modules\Identity\Events\HoneypotEvent;
 use Modules\Identity\Security\Blacklist\BlacklistService;
 use Modules\Identity\Security\Fingerprint\RequestFingerprint;
+use Modules\Identity\Security\Whitelist\WhitelistService;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -25,7 +26,10 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class HoneypotMiddleware
 {
-    public function __construct(private readonly BlacklistService $blacklist) {}
+    public function __construct(
+        private readonly BlacklistService $blacklist,
+        private readonly WhitelistService $whitelist,
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -35,22 +39,27 @@ final class HoneypotMiddleware
 
         $route = '/'.ltrim($request->path(), '/');
 
-        // Ban EVERY signal the request carried (ip + device + localStorage id +
-        // browser/header fingerprint), not just the ip — so a VPN switch alone
-        // won't get the attacker back onto the real API.
-        $this->blacklist->blockSignals(
-            RequestFingerprint::signals($request),
-            'honeypot:'.$route,
-            (int) config('honeypot.blacklist_ttl', 86400),
-        );
+        // A whitelisted operator hitting a decoy is NOT an attacker — never ban,
+        // log, or tarpit them (security.md §4: the allow-list bypasses every
+        // perimeter guard). They just get the same harmless decoy response.
+        if (! $this->whitelist->isWhitelisted($request->ip() ?? '')) {
+            // Ban EVERY signal the request carried (ip + device + localStorage id +
+            // browser/header fingerprint), not just the ip — so a VPN switch alone
+            // won't get the attacker back onto the real API.
+            $this->blacklist->blockSignals(
+                RequestFingerprint::signals($request),
+                'honeypot:'.$route,
+                (int) config('honeypot.blacklist_ttl', 86400),
+            );
 
-        HoneypotEvent::dispatch(
-            $this->fingerprint($request),
-            $route,
-            now()->toIso8601String(),
-        );
+            HoneypotEvent::dispatch(
+                $this->fingerprint($request),
+                $route,
+                now()->toIso8601String(),
+            );
 
-        $this->tarpit();
+            $this->tarpit();
+        }
 
         return $next($request);
     }

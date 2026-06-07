@@ -8,14 +8,29 @@ use Modules\Identity\Http\Controllers\AuthController;
 
 // Loaded by IdentityServiceProvider under the 'api' middleware + '/api' prefix.
 
-// Login is tightly throttled (security.md §2) — brute-force defense.
-Route::post('/login', [AuthController::class, 'login'])
-    ->middleware('throttle:login')
-    ->name('auth.login');
+// There is ONE login surface: the gated /api/admin/login below (the web client uses it).
+// The bare /api/login is intentionally NOT a route here — it's a honeypot decoy
+// (config/honeypot.php), so anyone hitting it is trapped + blacklisted.
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
     Route::get('/user', [AuthController::class, 'me'])->name('auth.me');
+});
+
+// The ADMIN auth surface the web client uses (login → session → me/logout). It lives under the
+// `/admin` prefix so AdminWhitelistMiddleware (on the `api` group, security.md §4) gates it: only
+// allow-listed IPs may reach it — anyone else is auto-blacklisted + 404'd. Same controller as the
+// routes above; those stay for native clients + the perimeter tests. NB: a session minted via the
+// ungated `/login` still can't drive the console — the IP gate sits in front of every `/admin/*`.
+Route::prefix('admin')->group(function (): void {
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle:login')
+        ->name('admin.auth.login');
+
+    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::post('/logout', [AuthController::class, 'logout'])->name('admin.auth.logout');
+        Route::get('/me', [AuthController::class, 'me'])->name('admin.auth.me');
+    });
 });
 
 // Admin security console — authenticated + admin only. The IP allow-list is

@@ -26,7 +26,12 @@ export function AdminLoginView() {
     event.preventDefault();
     login.mutate(
       { email, password },
-      { onSuccess: () => navigate(paths.admin, { replace: true }) },
+      {
+        onSuccess: () => navigate(paths.admin, { replace: true }),
+        // Wrong credentials → clear the password field (keep the email) so the next attempt
+        // starts fresh instead of leaving the rejected password sitting in the box.
+        onError: () => setPassword(''),
+      },
     );
   }
 
@@ -66,13 +71,9 @@ export function AdminLoginView() {
         required
       />
 
-      <AppButton type="submit" startIcon={<SignInIcon />} disabled={login.isPending}>
+      <AppButton type="submit" startIcon={<SignInIcon />} loading={login.isPending}>
         {t('admin:login.submit')}
       </AppButton>
-
-      <Typography variant="caption" color="text.secondary">
-        {t('admin:login.demoHint')}
-      </Typography>
     </Stack>
   );
 }

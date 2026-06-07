@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Procurement\Models;
 
 use App\Support\PublicId\HasPublicId;
+use App\Support\Vector\VectorCast;
 use Database\Factories\CompanyFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,6 +25,14 @@ final class Company extends Model
         'phone',
         'source_url',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            // Filled by `search:embed` (Google); read by the vector search.
+            'name_embedding' => VectorCast::class,
+        ];
+    }
 
     /** Tenders this company won (winner→authority graph, CLAUDE.md §1.1.3). @return HasMany<Tender> */
     public function wonTenders(): HasMany

@@ -23,5 +23,6 @@ final class FlaggedCaseShareData extends Data
         public ?CorruptionCategory $category,
         public int $score,          // suspicion score 0–100 (the weight, ×100) — why it counts partially
         public float $userShare,    // the user's taxes attributable to this case (score-weighted)
+        public ?string $flagPublicId, // link to the readable flag-post (null if it somehow has none)
     ) {}
 }

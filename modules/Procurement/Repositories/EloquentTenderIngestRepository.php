@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Procurement\Repositories;
 
 use Carbon\CarbonInterface;
+use Modules\Presentation\Support\Regions;
 use Modules\Procurement\Contracts\TenderIngestRepository;
 use Modules\Procurement\Models\Company;
 use Modules\Procurement\Models\ContractingAuthority;
@@ -27,7 +28,10 @@ final class EloquentTenderIngestRepository implements TenderIngestRepository
         return ContractingAuthority::updateOrCreate($match, $this->withoutNulls([
             'name' => $name,
             'eik' => $eik,
-            'region' => $data['region'] ?? null,
+            // Normalise the free-text region the scraper carries ("София") to its NUTS3 code
+            // ("BG411") so the map + region aggregates join cleanly; keep the raw value if it's
+            // unrecognised (better an unmappable string than dropping provenance).
+            'region' => Regions::code($data['region'] ?? null) ?? ($data['region'] ?? null),
             'source_url' => $data['source_url'] ?? null,
         ]));
     }

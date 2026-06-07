@@ -65,7 +65,15 @@ if [ "$SOURCES" = "off" ] || [ "$SOURCES" = "none" ]; then
   note "SCRAPE_SOURCES=$SOURCES -- pipeline disabled, nothing to do."
   exit 0
 fi
-note "sources: $SOURCES"
+
+# Only AI verdicts at/above this 0-100 score become flag posts (analyze:ingest --min-score).
+# env PIPELINE_MIN_SCORE -> else PIPELINE_MIN_SCORE in .env.prod -> else 0 (show everything).
+MIN_SCORE="${PIPELINE_MIN_SCORE:-}"
+if [ -z "$MIN_SCORE" ]; then
+  MIN_SCORE="$(grep -E '^PIPELINE_MIN_SCORE=' .env.prod 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' || true)"
+fi
+[ -z "$MIN_SCORE" ] && MIN_SCORE=0
+note "sources: $SOURCES | min flag-post score: $MIN_SCORE"
 
 # --- per-source chain (sources run concurrently) -----------------------------
 run_source() {
@@ -90,7 +98,7 @@ run_source() {
   # shows up in the citizen flag-posts feed/map (detect:run below only adds the deterministic
   # flags). Runs AFTER ingest:run because each flag attaches to its tender.
   run_step "$LOG_DIR/${src}.4-analyze-ingest.log" "analyze:ingest $src" \
-    docker compose run --rm --no-deps app php artisan analyze:ingest --source="$src" \
+    docker compose run --rm --no-deps app php artisan analyze:ingest --source="$src" --min-score="$MIN_SCORE" \
     || note "analyze:ingest $src failed (AI verdicts won't appear as flag posts for $src)"
   log "=== source '$src' DONE ==="
 }

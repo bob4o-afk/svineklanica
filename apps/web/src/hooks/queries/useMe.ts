@@ -4,9 +4,10 @@ import { http } from '@/lib/http';
 import { queryKeys } from '@/lib/queryKeys';
 import type { AdminUser } from '@/types/api';
 
-/** The current admin session. A 401 is the normal "not logged in" answer — NOT an error — so it
- *  resolves to `null`; the public app never surfaces an error for an anonymous visitor. The real
- *  authority is always the server (security.md): this only drives UX (show admin nav / redirect). */
+/** The current session, from the backend `GET /api/admin/me` (auth.me, under the guarded admin
+ *  namespace). A 401 is the normal "not logged in" answer — NOT an error — so it resolves to
+ *  `null`; the public app never surfaces an error for an anonymous visitor. The real authority is
+ *  always the server (security.md): this only drives UX (show admin nav / redirect). */
 export function useMe() {
   return useQuery({
     queryKey: queryKeys.me(),

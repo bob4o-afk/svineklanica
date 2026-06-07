@@ -32,5 +32,10 @@
         <env name="QUEUE_CONNECTION" value="sync" force="true"/>
         <env name="SESSION_DRIVER" value="array" force="true"/>
         <env name="TELESCOPE_ENABLED" value="false" force="true"/>
+        <!-- Security perimeter is deterministic in tests, independent of the operator's .env:
+             no ambient IP allow-list (WhitelistTest opts in per-case so 127.0.0.1 stays an
+             untrusted caller), and a fixed honeypot decoy set (incl. /api/login). -->
+        <env name="SECURITY_IP_WHITELIST" value="" force="true"/>
+        <env name="HONEYPOT_ROUTES" value="/api/login,/api/admin,/api/.env,/api/internal/db-dump,/api/v1/users/export,/wp-login.php,/.git/config,/.env,/phpinfo.php" force="true"/>
     </php>
 </phpunit>

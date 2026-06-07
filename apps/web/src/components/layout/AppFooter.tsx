@@ -1,9 +1,7 @@
 import { Box, Link as MuiLink, Stack, Typography } from '@mui/material';
 import { GithubLogoIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { Link as RouterLink } from 'react-router-dom';
 import { BRAND } from '@/config/brand';
-import { paths } from '@/routes/paths';
 
 /** Footer: the sourcing promise + the OSS repo link (external, opened safely). */
 export function AppFooter() {
@@ -28,16 +26,6 @@ export function AppFooter() {
         <Typography variant="overline" color="text.secondary">
           {BRAND.name}
         </Typography>
-        {/* Discreet editor entry — back-office, never advertised in the main nav. */}
-        <MuiLink
-          component={RouterLink}
-          to={paths.adminLogin}
-          variant="caption"
-          color="text.secondary"
-          sx={{ opacity: 0.6 }}
-        >
-          {t('common:nav.admin')}
-        </MuiLink>
       </Stack>
     </Box>
   );

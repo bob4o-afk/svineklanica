@@ -1,12 +1,10 @@
-import { Box, Divider, Stack, Typography } from '@mui/material';
-import { ArrowRightIcon, MagnifyingGlassIcon } from '@phosphor-icons/react';
-import { useState } from 'react';
+import { Box, Skeleton, Stack, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { AppButton } from '@/components/controls/AppButton';
+import { AppCorruptionCalculator } from '@/components/calculator/AppCorruptionCalculator';
 import { AppLink } from '@/components/controls/AppLink';
-import { AppSearchInput } from '@/components/controls/AppSearchInput';
+import { AppCountUp } from '@/components/motion/AppCountUp';
 import { AppReveal } from '@/components/motion/AppReveal';
+import { AppErrorBoundary } from '@/components/feedback/AppErrorBoundary';
 import { FeedList } from '@/features/feed/FeedList';
 import { useStats } from '@/hooks/queries/useStats';
 import { EMPTY_CELL, formatNumber } from '@/lib/format';
@@ -15,7 +13,7 @@ import { fonts } from '@/theme/typography';
 import { palette } from '@/theme/tokens';
 import { HomeHero } from './HomeHero';
 
-function StatCounter({ value, label }: { value: string; label: string }) {
+function StatCounter({ value, label, loading }: { value?: number; label: string; loading: boolean }) {
   return (
     <Box sx={{ borderLeft: `2px solid ${palette.alarm}`, pl: 2 }}>
       <Typography
@@ -28,7 +26,13 @@ function StatCounter({ value, label }: { value: string; label: string }) {
         }}
         data-counter
       >
-        {value}
+        {value !== undefined ? (
+          <AppCountUp value={value} format={formatNumber} />
+        ) : loading ? (
+          <Skeleton variant="text" width="2.5ch" sx={{ fontSize: 'inherit', transform: 'none' }} />
+        ) : (
+          EMPTY_CELL
+        )}
       </Typography>
       <Typography
         sx={{
@@ -49,8 +53,6 @@ function StatCounter({ value, label }: { value: string; label: string }) {
 
 export function HomeView() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [searchInput, setSearchInput] = useState('');
   const stats = useStats();
   const stat = stats.data;
 
@@ -69,7 +71,7 @@ export function HomeView() {
           pb: 8,
         }}
       >
-        {/* Headline + subtitle + stats + CTAs */}
+        {/* Headline + subtitle + stats + calculator */}
         <Stack spacing={4}>
           <AppReveal>
             <Box>
@@ -114,38 +116,47 @@ export function HomeView() {
 
           <Stack direction="row" spacing={4} flexWrap="wrap" useFlexGap>
             <AppReveal delay={0}>
-              <StatCounter value={stat ? formatNumber(stat.tenders) : EMPTY_CELL} label={t('home:stats.tenders')} />
+              <StatCounter
+                {...(stat ? { value: stat.tenders } : {})}
+                loading={stats.isPending}
+                label={t('home:stats.tenders')}
+              />
             </AppReveal>
             <AppReveal delay={120}>
-              <StatCounter value={stat ? formatNumber(stat.flags) : EMPTY_CELL} label={t('home:stats.flags')} />
+              <StatCounter
+                {...(stat ? { value: stat.flags } : {})}
+                loading={stats.isPending}
+                label={t('home:stats.flags')}
+              />
             </AppReveal>
             <AppReveal delay={240}>
-              <StatCounter value={stat ? formatNumber(stat.detectors) : EMPTY_CELL} label={t('home:stats.detectors')} />
+              <StatCounter
+                {...(stat ? { value: stat.detectors } : {})}
+                loading={stats.isPending}
+                label={t('home:stats.detectors')}
+              />
             </AppReveal>
           </Stack>
 
-          <AppReveal delay={120}>
-            <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-              <AppButton to={paths.feed} variant="contained" endIcon={<ArrowRightIcon />}>
-                {t('home:hero.cta')}
-              </AppButton>
-              <AppButton to={paths.search} variant="outlined" startIcon={<MagnifyingGlassIcon />}>
-                {t('home:hero.ctaSearch')}
-              </AppButton>
-            </Stack>
+          {/* The corruption-tax calculator — embedded, prefilled, computes on load. */}
+          <AppReveal delay={300}>
+            <Box
+              sx={{
+                p: { xs: 2, sm: 3 },
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
+              }}
+            >
+              <Typography
+                sx={{ fontFamily: fonts.mono, fontWeight: 700, fontSize: '0.85rem', mb: 2 }}
+              >
+                {t('home:calculator.teaser')}
+              </Typography>
+              <AppCorruptionCalculator compact />
+            </Box>
           </AppReveal>
         </Stack>
-
-        {/* Search bar */}
-        <AppReveal>
-          <AppSearchInput
-            value={searchInput}
-            onChange={setSearchInput}
-            onSubmit={(q) => void navigate(`${paths.search}?q=${encodeURIComponent(q)}`)}
-          />
-        </AppReveal>
-
-        <Divider />
 
         {/* Latest flags */}
         <Stack spacing={3}>
@@ -162,7 +173,9 @@ export function HomeView() {
               </AppLink>
             </Stack>
           </AppReveal>
-          <FeedList query={{ sort: 'newest' }} limit={3} />
+          <AppErrorBoundary>
+            <FeedList query={{ sort: 'newest' }} limit={3} />
+          </AppErrorBoundary>
         </Stack>
       </Stack>
     </Stack>

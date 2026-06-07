@@ -8,7 +8,11 @@ export function SearchPage() {
   const { t } = useTranslation();
   return (
     <>
-      <AppSeo title={t('search:title')} />
+      <AppSeo
+        title={t('search:title')}
+        description={t('search:placeholder')}
+        keywords={['търсене обществени поръчки', 'търси възложител', 'търси фирма', 'проверка на фирма']}
+      />
       <SearchView />
     </>
   );

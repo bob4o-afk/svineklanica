@@ -31,7 +31,9 @@ return [
         'trim',
         explode(',', (string) env(
             'HONEYPOT_ROUTES',
-            '/api/admin,/api/.env,/api/internal/db-dump,/api/v1/users/export,/wp-login.php,/.git/config,/.env,/phpinfo.php'
+            // /api/login is a decoy: the web client logs in via /api/admin/login, so anyone
+            // hitting the bare /api/login is a scanner. /api/admin is the bare admin probe.
+            '/api/login,/api/admin,/api/.env,/api/internal/db-dump,/api/v1/users/export,/wp-login.php,/.git/config,/.env,/phpinfo.php'
         ))
     ))),
 

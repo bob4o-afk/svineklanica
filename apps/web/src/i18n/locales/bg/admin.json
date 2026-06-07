@@ -5,8 +5,7 @@
     "email": "Имейл",
     "password": "Парола",
     "submit": "Влез",
-    "error": "Грешен имейл или парола.",
-    "demoHint": "Демо: admin@example.com / парола: parola"
+    "error": "Грешен имейл или парола."
   },
   "nav": {
     "dashboard": "Табло",
