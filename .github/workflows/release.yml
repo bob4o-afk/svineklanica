@@ -103,7 +103,7 @@ jobs:
           host: ${{ secrets.DEPLOY_SSH_HOST }}
           username: ${{ secrets.DEPLOY_SSH_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "docker-compose.prod.yml,Caddyfile"
+          source: "docker-compose.prod.yml,Caddyfile,scripts/pipeline.sh"
           target: ${{ secrets.DEPLOY_PATH }}
 
       - name: SSH in, pull, migrate, ROLLING (zero-downtime) swap
@@ -182,30 +182,15 @@ jobs:
             # image (stale pull / wrong tag) and the deploy should be treated as failed.
             docker compose run --rm --no-deps app php artisan list detect >/dev/null
 
-            # --- Fresh data on every release: scrape -> AI analyze -> ingest ---
-            # Sources from repo variable SCRAPE_SOURCES (space/comma list; default
-            # "ted"; set it to "off" to skip). The analyzer self-limits via the caps
-            # in .env.prod (AGENTS_CAP concurrent, AGENTS_EVAL_CAP total evaluations).
-            # Every step is NON-FATAL: a flaky upstream must not fail a good release.
-            SOURCES="${{ vars.SCRAPE_SOURCES }}"
-            [ -z "$SOURCES" ] && SOURCES="ted"
-            if [ "$SOURCES" != "off" ] && [ "$SOURCES" != "none" ]; then
-              docker compose --profile tools pull scraper ai || true
-              for src in $(echo "$SOURCES" | tr ',' ' '); do
-                echo "=== ingest pipeline: $src ==="
-                docker compose --profile tools run --rm scraper uv run scrape --source "$src" \
-                  || echo "scrape $src failed (continuing)"
-                docker compose --profile tools run --rm ai uv run analyze --source "$src" \
-                  || echo "analyze $src failed (continuing)"
-                docker compose run --rm --no-deps app php artisan ingest:run --source="$src" \
-                  || echo "ingest $src failed (continuing)"
-              done
-              # Recompute the red-flag detectors over the freshly ingested data.
-              docker compose run --rm --no-deps app php artisan detect:run \
-                || echo "detect:run failed (continuing)"
-            else
-              echo "SCRAPE_SOURCES=$SOURCES — skipping scrape/analyze on this deploy."
-            fi
+            # --- Fresh data on every deploy: scrape -> AI analyze -> ingest -> detect.
+            # This is the SAME script cron runs hourly (scripts/pipeline.sh, scp'd above),
+            # so the on-deploy refresh and the scheduled refresh are byte-for-byte identical.
+            # It gates ingest on an AI verdict (--require-verdict) and self-limits via the
+            # AGENTS_CAP/AGENTS_EVAL_CAP governors in .env.prod. Pull the tool images first,
+            # then run; the whole thing is NON-FATAL so a flaky upstream can't fail a release.
+            docker compose --profile tools pull scraper ai || true
+            export SCRAPE_SOURCES="${{ vars.SCRAPE_SOURCES }}"
+            bash scripts/pipeline.sh || echo "data pipeline failed (continuing — deploy still succeeds)"
 
   # --- Email notifications: one when the deploy STARTS, one on SUCCESS,
   #     one on FAILURE (saying which stage failed). All via the same SMTP secrets.

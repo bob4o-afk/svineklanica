@@ -18,6 +18,7 @@ final class IngestRunCommand extends Command
     protected $signature = 'ingest:run
         {--source= : Source id, e.g. ted (reads storage/ingest/normalized/<source>.ndjson)}
         {--path= : Override the NDJSON path}
+        {--require-verdict : Only ingest records the AI analyzer produced a verdict for; drop unevaluated ones}
         {--queue : Dispatch the async ingest job instead of running inline}';
 
     protected $description = 'Ingest a source NDJSON file into the database (idempotent upsert).';
@@ -32,15 +33,16 @@ final class IngestRunCommand extends Command
         }
 
         $path = $this->option('path') !== null ? (string) $this->option('path') : null;
+        $requireVerdict = (bool) $this->option('require-verdict');
 
         if ($this->option('queue')) {
-            IngestSourceJob::dispatch($source, $path);
+            IngestSourceJob::dispatch($source, $path, $requireVerdict);
             $this->info("Queued ingest job for source '{$source}'.");
 
             return self::SUCCESS;
         }
 
-        $summary = $action->execute($source, $path);
+        $summary = $action->execute($source, $path, $requireVerdict);
 
         $this->info("Ingest '{$summary->source}' — {$summary->path}");
         $this->table(

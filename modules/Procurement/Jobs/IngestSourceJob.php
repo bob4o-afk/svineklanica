@@ -30,10 +30,11 @@ final class IngestSourceJob implements ShouldQueue
     public function __construct(
         public readonly string $source,
         public readonly ?string $path = null,
+        public readonly bool $requireVerdict = false,
     ) {}
 
     public function handle(IngestSourceAction $action): void
     {
-        $action->execute($this->source, $this->path);
+        $action->execute($this->source, $this->path, $this->requireVerdict);
     }
 }

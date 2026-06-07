@@ -129,13 +129,25 @@ def _analyze_views(
 
     cap = max(1, config.agents_cap)
     if cap == 1 or len(views) <= 1:
-        return [work(v) for v in views]
+        out: list[VerdictRecord] = []
+        for v in views:
+            try:
+                out.append(work(v))
+            except Exception:  # noqa: BLE001 - one bad record must not kill the batch
+                # No verdict -> the Laravel ingest gate (--require-verdict) drops it,
+                # so a failed evaluation is never stored. Logged so it's not silent.
+                logger.exception("analyze failed for %s; dropped (won't be ingested)", v.natural_key)
+        return out
 
     verdicts: list[VerdictRecord | None] = [None] * len(views)
     with ThreadPoolExecutor(max_workers=cap, thread_name_prefix="analyze") as executor:
         futures = {executor.submit(work, view): i for i, view in enumerate(views)}
         for future in as_completed(futures):
-            verdicts[futures[future]] = future.result()
+            i = futures[future]
+            try:
+                verdicts[i] = future.result()
+            except Exception:  # noqa: BLE001 - one bad record must not kill the batch
+                logger.exception("analyze failed for %s; dropped (won't be ingested)", views[i].natural_key)
     return [v for v in verdicts if v is not None]
 
 

@@ -60,12 +60,14 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml exec app php arti
 ```
 Visit `https://your-domain.bg` — Caddy has already issued the TLS cert. Done.
 
-## 5. (Optional) Auto-deploy on every release tag — ZERO-DOWNTIME
-In the GitHub repo:
-- Variable: `DEPLOY_ENABLED = true`
+## 5. Auto-deploy on every push to `main` — ZERO-DOWNTIME
+In the GitHub repo set these secrets (no `DEPLOY_ENABLED` flag anymore — every push to
+`main` deploys):
 - Secrets: `DEPLOY_SSH_HOST`, `DEPLOY_SSH_USER`, `DEPLOY_SSH_KEY` (a private key whose public half is in the VM's `~/.ssh/authorized_keys`), `DEPLOY_PATH=/opt/liberhack`.
-Now `git tag v1.0.1 && git push --tags` → Actions builds, then SSHes in and does a
-**rolling, zero-downtime swap** and migrates automatically, and you get the release email.
+Now any push to `main` → Actions runs tests, builds images tagged by the **commit SHA**,
+scp's `docker-compose.prod.yml` + `Caddyfile` + `scripts/pipeline.sh` to the VM, SSHes in
+and does a **rolling, zero-downtime swap**, migrates, refreshes data, and emails you.
+(Images are pinned to the SHA — the VM can never silently run a stale `:latest`.)
 
 How the zero-downtime deploy works (release.yml `deploy` job):
 - The prod API image is **FrankenPHP** (`Dockerfile.prod`) — it serves requests
@@ -85,13 +87,20 @@ How the zero-downtime deploy works (release.yml `deploy` job):
   `${DOCKER_CONFIG:-~/.docker}/cli-plugins` — the dir the host's `docker` actually
   reads (so it's found even when docker is invoked via `sudo`).
 
-## 6. Fresh data on every release — scrape → AI analyze → ingest → detect
+## 6. Fresh data — scrape → AI analyze → ingest (evaluated only) → detect
 
-Once auto-deploy is on (§5), the deploy job also **refreshes the data** at the end
-of every release: for each source it runs the Python scraper, the AI analyzer, then
-`ingest:run`, then recomputes the detectors. All steps are **non-fatal** — a flaky
-upstream logs a warning but never fails an otherwise-good release. (Ingest-first:
-this runs *at deploy time*, never live during a demo.)
+The whole refresh is one script — **`scripts/pipeline.sh`** — run two ways from the
+SAME code: at the end of every deploy (§5), and **hourly via cron** (§6.1). For each
+source it runs the Python scraper, the AI analyzer, then `ingest:run --require-verdict`,
+then recomputes the detectors.
+
+**Only AI-evaluated records are stored.** `--require-verdict` gates ingest on the
+analyzer's verdict sidecar: a record with no verdict — because the analyzer errored,
+or the source's analyze step failed — is **dropped, never inserted** (CLAUDE.md: no
+source/eval → not in the DB). The analyzer also skips a record that throws instead of
+killing the batch, so one bad record can't poison the run. All steps are **non-fatal** —
+a flaky upstream logs a warning but never fails an otherwise-good deploy. (Ingest-first:
+this runs at deploy/cron time, never live during a demo.)
 
 Control it with repo **variables** (Settings → Secrets and variables → Actions → Variables):
 - **`SCRAPE_SOURCES`** — space/comma list of source ids to refresh on each deploy.
@@ -101,17 +110,33 @@ Control it with repo **variables** (Settings → Secrets and variables → Actio
 The analyzer's cost/concurrency caps come from **`.env.prod`** on the VM (used by the
 `ai` service's `env_file`), so the auto-run self-limits:
 - **`GOOGLE_API_KEY`** — Gemini key; without it the analyzer runs deterministic-only.
-- **`AGENTS_CAP`** — max **concurrent** agent calls in flight (async ceiling; default 8).
+- **`AGENTS_CAP`** — max **concurrent** agent calls in flight (async ceiling; default 100).
 - **`AGENTS_EVAL_CAP`** — max **total** LLM evaluations per run; `0` = unlimited (default 100).
+- **`SCRAPE_SOURCES`** — (optional) space/comma list of sources for the cron run; defaults
+  to `ted`, `off`/`none` disables. The deploy reads it from the repo variable instead.
 
-Run it by hand on the VM the same way the deploy does:
+Run the whole thing by hand on the VM exactly as cron/deploy do:
 ```bash
+cd /opt/liberhack && bash scripts/pipeline.sh           # all sources in SCRAPE_SOURCES
+# …or one stage at a time:
 export COMPOSE_FILE=docker-compose.prod.yml COMPOSE_ENV_FILES=.env.prod
 docker compose --profile tools run --rm scraper uv run scrape --source ted
 docker compose --profile tools run --rm ai uv run analyze --source ted
-docker compose run --rm --no-deps app php artisan ingest:run --source=ted
+docker compose run --rm --no-deps app php artisan ingest:run --source=ted --require-verdict
 docker compose run --rm --no-deps app php artisan detect:run
 ```
+
+### 6.1 Hourly refresh via cron
+The scrape/AI/ingest tools are one-shot batch jobs (compose profile `tools`), not daemons,
+so they're driven by the host scheduler. Add one crontab line on the VM:
+```bash
+crontab -e
+# Свинекланица: refresh data every hour at :05. Logs to /var/log/svineklanitsa-pipeline.log.
+5 * * * * cd /opt/liberhack && /usr/bin/bash scripts/pipeline.sh >> /var/log/svineklanitsa-pipeline.log 2>&1
+```
+Each run is bounded by `AGENTS_CAP` / `AGENTS_EVAL_CAP` (100/100), so an hourly cadence
+stays within Gemini quota. Tail the log to confirm it's firing: `tail -f /var/log/svineklanitsa-pipeline.log`.
+(`scripts/pipeline.sh` is scp'd to the VM by the deploy, so it's always present + current.)
 
 ==============================================================================
 MONITORING  (bring up next to the app)

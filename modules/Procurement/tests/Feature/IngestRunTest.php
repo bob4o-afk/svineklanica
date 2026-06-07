@@ -251,6 +251,47 @@ it('skips malformed / mismatched rows and reports why', function () {
     unlink($path);
 });
 
+it('with --require-verdict, ingests only AI-evaluated records and drops the rest', function () {
+    $path = writeFixture('test');
+
+    // The analyzer evaluated ONLY the first record — write its verdict sidecar.
+    $verdictDir = storage_path('ingest/verdicts');
+    if (! is_dir($verdictDir)) {
+        mkdir($verdictDir, 0777, true);
+    }
+    $verdictPath = "{$verdictDir}/test.ndjson";
+    file_put_contents($verdictPath, json_encode([
+        'source' => 'test',
+        'natural_key' => '2026/S-000001',
+        'source_url' => 'https://ted.europa.eu/notice/1',
+        'corruption_score' => 80,
+    ], JSON_THROW_ON_ERROR)."\n");
+
+    $summary = app(IngestSourceAction::class)->execute('test', $path, requireVerdict: true);
+
+    // Record 2 is valid but UNevaluated → now dropped too (1 written, 4 skipped of 5 read).
+    expect($summary->written)->toBe(1)
+        ->and(Tender::count())->toBe(1)
+        ->and(Tender::where('natural_key', '2026/S-000001')->exists())->toBeTrue()
+        ->and(Tender::where('natural_key', '2026/S-000002')->exists())->toBeFalse();
+
+    expect(implode("\n", $summary->skipReasons))->toContain('not evaluated');
+
+    unlink($path);
+    unlink($verdictPath);
+});
+
+it('with --require-verdict and no verdict file, ingests nothing', function () {
+    $path = writeFixture('noverdict');
+
+    $summary = app(IngestSourceAction::class)->execute('noverdict', $path, requireVerdict: true);
+
+    expect($summary->written)->toBe(0)
+        ->and(Tender::count())->toBe(0);
+
+    unlink($path);
+});
+
 it('returns an empty summary when the NDJSON is missing', function () {
     $summary = app(IngestSourceAction::class)->execute('nope', '/tmp/does-not-exist.ndjson');
 

@@ -36,7 +36,7 @@ final class IngestSourceAction
         private readonly LoggingService $log,
     ) {}
 
-    public function execute(string $source, ?string $path = null): IngestSummary
+    public function execute(string $source, ?string $path = null, bool $requireVerdict = false): IngestSummary
     {
         $path ??= storage_path("ingest/normalized/{$source}.ndjson");
 
@@ -44,6 +44,17 @@ final class IngestSourceAction
             $this->log->warning('ingest: NDJSON not found', ['source' => $source, 'path' => $path]);
 
             return new IngestSummary($source, $path, skipReasons: ["NDJSON not found at {$path}"]);
+        }
+
+        // When gating on AI verdicts, a record is only inserted if the analyzer
+        // produced a verdict for its natural_key — anything that failed/wasn't
+        // evaluated is dropped, never stored (CLAUDE.md: unevaluated = not in the DB).
+        $evaluated = $requireVerdict ? $this->loadEvaluatedKeys($source) : [];
+        if ($requireVerdict && $evaluated === []) {
+            $this->log->warning(
+                'ingest: --require-verdict set but no verdicts found — nothing will be ingested',
+                ['source' => $source],
+            );
         }
 
         $read = 0;
@@ -88,6 +99,12 @@ final class IngestSourceAction
 
                 if ($record['source'] !== $source) {
                     $skip("source mismatch (record is '{$record['source']}')");
+
+                    continue;
+                }
+
+                if ($requireVerdict && ! isset($evaluated[(string) $record['natural_key']])) {
+                    $skip('not evaluated — no AI verdict, dropped (not inserted)');
 
                     continue;
                 }
@@ -148,6 +165,57 @@ final class IngestSourceAction
 
             $this->records->markIngested($ingest);
         });
+    }
+
+    /**
+     * The set of natural_keys the analyzer produced a verdict for, read from the
+     * verdict sidecar (apps/ai writes storage/ingest/verdicts/<source>.ndjson).
+     * Returned as a lookup map (key => true) so the ingest gate is an O(1) isset().
+     * A missing/empty file yields an empty set — with --require-verdict that means
+     * nothing is ingested, which is the safe direction (never store unevaluated data).
+     *
+     * @return array<string, true>
+     */
+    private function loadEvaluatedKeys(string $source): array
+    {
+        $path = storage_path("ingest/verdicts/{$source}.ndjson");
+        if (! is_readable($path)) {
+            return [];
+        }
+
+        $keys = [];
+        $handle = fopen($path, 'rb');
+
+        try {
+            while (($line = fgets($handle)) !== false) {
+                $line = trim($line);
+                if ($line === '') {
+                    continue;
+                }
+
+                try {
+                    /** @var array<string, mixed> $verdict */
+                    $verdict = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
+                } catch (JsonException $e) {
+                    // A malformed verdict line just leaves its record ungated → dropped.
+                    // That's the safe direction, but log it so a corrupt sidecar is visible.
+                    $this->log->warning('ingest: unparseable verdict line', [
+                        'source' => $source,
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    continue;
+                }
+
+                if (isset($verdict['natural_key'])) {
+                    $keys[(string) $verdict['natural_key']] = true;
+                }
+            }
+        } finally {
+            fclose($handle);
+        }
+
+        return $keys;
     }
 
     /** @param array<string, mixed> $record @return array<int, string> */
