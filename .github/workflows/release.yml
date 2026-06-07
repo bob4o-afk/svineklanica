@@ -202,7 +202,15 @@ jobs:
             # command so it always exits 0 — `set -e` stays happy.
             CRON_LINE="5 * * * * cd ${{ secrets.DEPLOY_PATH }} && /usr/bin/bash scripts/pipeline.sh >> ${{ secrets.DEPLOY_PATH }}/logs/pipeline-cron.log 2>&1"
             ( crontab -l 2>/dev/null | grep -vF 'scripts/pipeline.sh'; echo "$CRON_LINE" ) | crontab -
-            echo "Hourly pipeline cron ensured:"; crontab -l | grep -F 'scripts/pipeline.sh'
+            # Verify the cron landed, but DON'T let grep's "no match -> exit 1" fail
+            # the deploy: this is the LAST command under `set -e`, so its exit code is
+            # the whole step's. The deploy + data refresh already succeeded — a missing
+            # cron is a warning to investigate, not a release failure.
+            if crontab -l 2>/dev/null | grep -F 'scripts/pipeline.sh'; then
+              echo "Hourly pipeline cron ensured (shown above)."
+            else
+              echo "WARNING: could not confirm the hourly pipeline cron (crontab/cron unavailable on this VM, or not writable). Deploy still succeeded; install it manually per DEPLOY.md §6.1 if needed."
+            fi
 
   # --- Email notifications: one when the deploy STARTS, one on SUCCESS,
   #     one on FAILURE (saying which stage failed). All via the same SMTP secrets.
