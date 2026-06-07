@@ -129,21 +129,24 @@ jobs:
             # waits for the new container's healthcheck, then drains the old one).
             # Install into the dir THIS docker actually reads (DOCKER_CONFIG honored),
             # so the plugin is discoverable even when docker is invoked via sudo.
+            # Detect by FILE PRESENCE, not `docker rollout --help`: some docker versions
+            # print general help and exit 0 for an unknown subcommand, a false positive
+            # that left ROLLOUT_OK=1 and then aborted the real `docker rollout <svc>`
+            # with "unknown command: docker rollout". `|| true` so a failed download
+            # never aborts the deploy — we just fall back to `up -d` below.
             PLUGIN_DIR="${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins"
-            if ! docker rollout --help >/dev/null 2>&1; then
+            if [ ! -x "$PLUGIN_DIR/docker-rollout" ]; then
               mkdir -p "$PLUGIN_DIR"
               curl -fsSL https://raw.githubusercontent.com/Wowu/docker-rollout/master/docker-rollout \
-                -o "$PLUGIN_DIR/docker-rollout"
-              chmod +x "$PLUGIN_DIR/docker-rollout"
+                -o "$PLUGIN_DIR/docker-rollout" && chmod +x "$PLUGIN_DIR/docker-rollout" || true
             fi
 
-            # Does rollout actually work now? (It can still be unavailable — e.g. docker
-            # invoked via sudo can't see the plugin.) We use this to decide what a rollout
+            # Is the rollout plugin actually present? Used below to decide what a rollout
             # FAILURE means: "new container is unhealthy" (rollout works → gate, fail the
             # deploy) vs "no rollout available" (→ plain up -d, then the explicit health
             # gate below catches a broken image). Either way an unhealthy app never ships.
             ROLLOUT_OK=""
-            docker rollout --help >/dev/null 2>&1 && ROLLOUT_OK=1
+            [ -x "$PLUGIN_DIR/docker-rollout" ] && ROLLOUT_OK=1
 
             # Pin the stack to the freshly built commit SHA, then pull. (sed exits 0
             # even when it matches nothing, so we can't rely on `sed || echo` to add a
@@ -179,10 +182,23 @@ jobs:
               if [ -n "$ROLLOUT_OK" ] && docker compose ps --status running --services | grep -qx "$svc"; then
                 # rollout WAITS for the new container's healthcheck before draining the
                 # old one; if the new container never goes healthy it exits non-zero and
-                # leaves the OLD one serving. We deliberately DON'T mask that with
-                # `|| up -d` (that would promote a broken image) — `set -e` aborts the
-                # deploy instead, and the working container keeps serving (no downtime).
-                docker rollout "$svc"
+                # leaves the OLD one serving. We capture the output so we can tell the
+                # two failure modes apart:
+                #  - "plugin not actually usable" (e.g. docker via sudo can't see it,
+                #    "unknown command: docker rollout") → FALL BACK to up -d, don't die.
+                #  - any OTHER failure (new container unhealthy) → DON'T mask it with
+                #    up -d (that would promote a broken image); let set -e abort so the
+                #    working old container keeps serving (no downtime).
+                if ! out="$(docker rollout "$svc" 2>&1)"; then
+                  echo "$out"
+                  if echo "$out" | grep -qiE "unknown command|not a docker command|is not a docker command"; then
+                    echo "docker rollout unavailable — falling back to 'up -d' for $svc"
+                    docker compose up -d "$svc"
+                  else
+                    echo "::error::docker rollout $svc failed (new container likely unhealthy) — aborting; old container keeps serving."
+                    exit 1
+                  fi
+                fi
               else
                 # First deploy (nothing running yet) or rollout unavailable: recreate in
                 # place, then the explicit health gate below catches a broken image.
