@@ -87,12 +87,14 @@ How the zero-downtime deploy works (release.yml `deploy` job):
   `${DOCKER_CONFIG:-~/.docker}/cli-plugins` — the dir the host's `docker` actually
   reads (so it's found even when docker is invoked via `sudo`).
 
-## 6. Fresh data — scrape → AI analyze → ingest (evaluated only) → detect
+## 6. Fresh data — scrape → AI analyze → ingest → flags → detect
 
 The whole refresh is one script — **`scripts/pipeline.sh`** — run two ways from the
 SAME code: at the end of every deploy (§5), and **hourly via cron** (§6.1). For each
-source it runs the Python scraper, the AI analyzer, then `ingest:run --require-verdict`,
-then recomputes the detectors.
+source it runs, in order: the Python **scraper** → the AI **analyzer** → `ingest:run
+--require-verdict` (the evaluated tenders) → `analyze:ingest` (turns the AI verdicts into
+**Flags on those tenders**, so they appear in the citizen flag-posts feed/map). After all
+sources finish it runs `detect:run` once (the deterministic detector flags) over the union.
 
 **Only AI-evaluated records are stored.** `--require-verdict` gates ingest on the
 analyzer's verdict sidecar: a record with no verdict — because the analyzer errored,
@@ -129,7 +131,8 @@ export COMPOSE_FILE=docker-compose.prod.yml COMPOSE_ENV_FILES=.env.prod
 docker compose --profile tools run --rm scraper uv run scrape --source ted --force
 docker compose --profile tools run --rm ai uv run analyze --source ted
 docker compose run --rm --no-deps app php artisan ingest:run --source=ted --require-verdict
-docker compose run --rm --no-deps app php artisan detect:run
+docker compose run --rm --no-deps app php artisan analyze:ingest --source=ted   # AI verdicts → flag posts
+docker compose run --rm --no-deps app php artisan detect:run                    # deterministic flags
 ```
 
 ### 6.1 Hourly refresh via cron
@@ -158,7 +161,8 @@ Every pipeline run writes a folder of per-step logs **on the VM** (so the throwa
   <source>.1-scrape.log    # full scraper output ("ingested N" — N=0 means nothing scraped)
   <source>.2-analyze.log   # full analyzer output ("analyzed N, flagged M, written -> …")
   <source>.3-ingest.log    # ingest table: Read / Written / Skipped + every skip reason
-  detect.log               # detector recompute
+  <source>.4-analyze-ingest.log  # AI verdicts → flags (the flag-posts feed content)
+  detect.log               # deterministic detector recompute
 logs/pipeline/latest       # → symlink to the newest run
 ```
 Quick triage:

@@ -86,6 +86,12 @@ run_source() {
   run_step "$LOG_DIR/${src}.3-ingest.log" "ingest $src" \
     docker compose run --rm --no-deps app php artisan ingest:run --source="$src" --require-verdict \
     || note "ingest $src failed"
+  # Persist the AI verdicts as Flags ON the just-ingested tenders, so the AI's assessment
+  # shows up in the citizen flag-posts feed/map (detect:run below only adds the deterministic
+  # flags). Runs AFTER ingest:run because each flag attaches to its tender.
+  run_step "$LOG_DIR/${src}.4-analyze-ingest.log" "analyze:ingest $src" \
+    docker compose run --rm --no-deps app php artisan analyze:ingest --source="$src" \
+    || note "analyze:ingest $src failed (AI verdicts won't appear as flag posts for $src)"
   log "=== source '$src' DONE ==="
 }
 
