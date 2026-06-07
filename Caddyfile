@@ -36,6 +36,14 @@
 			lb_policy round_robin
 			lb_try_duration 10s
 			lb_try_interval 250ms
+
+			# Behind Cloudflare the REAL client ip is in CF-Connecting-IP — the
+			# X-Forwarded-For chain reaching us otherwise resolves to a Cloudflare
+			# edge ip, which breaks the SECURITY_IP_WHITELIST match (an operator's
+			# whitelisted ip would never be recognised). Rewrite XFF to the true
+			# client ip so Laravel's trustProxies('*') sees it. Only set when the
+			# header is present, so direct-to-origin requests keep their real XFF.
+			header_up X-Forwarded-For {http.request.header.Cf-Connecting-Ip}
 		}
 	}
 
