@@ -30,13 +30,15 @@ function makeFlag(overrides: Partial<FlagPost> = {}): FlagPost {
 }
 
 describe('AppFlagPostCard', () => {
-  it('renders headline, neutral body, severity + type badges, and a validated source', () => {
+  it('renders headline, the TL;DR gist, severity + type badges, and a validated source', () => {
     renderWithProviders(<AppFlagPostCard flag={makeFlag()} />);
 
     expect(
       screen.getByRole('heading', { name: 'Тестово заглавие за надценяване' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Неутрално обяснение защо случаят е съмнителен.')).toBeInTheDocument();
+    // The card shows a derived „Накратко" gist (post:tldrByType.*), not the full explanation_bg —
+    // the full write-up + evidence live on the post page.
+    expect(screen.getByText(/повече за същата стока/)).toBeInTheDocument();
     expect(screen.getByText('Високо')).toBeInTheDocument(); // severity: high
     expect(screen.getByText('Надценяване')).toBeInTheDocument(); // type: price_discrepancy
 
@@ -44,8 +46,8 @@ describe('AppFlagPostCard', () => {
     expect(sourceLink).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
-  it('falls back to the em-dash placeholder when there is no evidence', () => {
-    renderWithProviders(<AppFlagPostCard flag={makeFlag({ evidence: [] })} />);
-    expect(screen.getByText('—')).toBeInTheDocument();
+  it('shows the missing-source warning when a flag has no sources', () => {
+    renderWithProviders(<AppFlagPostCard flag={makeFlag({ sources: [] })} />);
+    expect(screen.getByText('Липсва източник')).toBeInTheDocument();
   });
 });
