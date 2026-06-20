@@ -7,7 +7,7 @@ implausible scope, late payments, cloned docs) — each linked to its primary so
 > **This repo is currently config/skeleton only — no application code yet.**
 > Read **`plan.txt`** to bootstrap it, and **`CLAUDE.md`** + **`.claude/rules/`** for the rules.
 
-## Layout (leha-style monorepo)
+## Layout
 - **The Laravel API is the repo root** — its code lives in `app/` and `modules/<Domain>/`, config in `config/`. Built by the root `Dockerfile` → `svineklanitsa/api` image.
 - **`apps/web/`** — the React + TypeScript + **MUI** (incl. MUI X) + **Tailwind** + Phosphor client. One mobile-first responsive **PWA** = both the web and the "mobile" experience (no separate native app). Built by `apps/web/Dockerfile` → `svineklanitsa/web` image.
 

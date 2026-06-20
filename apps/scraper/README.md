@@ -65,7 +65,26 @@ docker compose run --rm scraper uv run scrape --source ted
 docker compose exec app php artisan ingest:run --source=ted
 ```
 
-## Semantic search (embeddings)
+## Search: vector (AI) or keyword (no-AI) — `SEARCH_MODE`
+`uv run search` has **two ranking modes**, picked by the `SEARCH_MODE` env var
+(or `--mode` to override per-run):
+
+| `SEARCH_MODE` | Aliases | What it does | Needs |
+|---|---|---|---|
+| `vector` *(default)* | `embedded`, `embeddings`, `semantic` | Embeds the query + cosine-ranks the sidecar vectors (AI) | `embed` extra + `uv run embed` first |
+| `keyword` | `normal`, `text`, `script`, `bm25` | Okapi BM25 over the normalized corpus — **pure Python, no model, no extra** | nothing (reads the normalized NDJSON) |
+
+```bash
+# keyword (script only — no AI, no embeddings needed)
+SEARCH_MODE=keyword uv run search --source ted "компютърни монитори"
+uv run search --source ted --mode keyword "компютри"      # per-run override
+
+# vector (AI / embeddings)
+SEARCH_MODE=vector uv run search --source ted "компютри"   # or just the default
+```
+Set `SEARCH_MODE` in your `.env`. An unknown value fails fast with the valid list.
+
+### Semantic search (embeddings) — the vector path
 Vectors are produced here in Python; the backend stores them in pgvector. We
 embed a composed searchable document (subject/title + entity names + CPV), not
 just the title and not the raw blob. Default model:
@@ -80,7 +99,8 @@ uv run embed --source ted                      # -> storage/ingest/embeddings/te
 uv run search --source ted "компютърни монитори"   # cosine top-k demo (pure Python)
 ```
 `EMBED_BACKEND`/`EMBED_MODEL` switch the backend (fastembed | sentence-transformers)
-and model. No API keys — the model is public.
+and model. No API keys — the model is public. Both keyword and vector modes build
+the **same** searchable document, so they're comparable.
 
 ## Test it
 ```bash

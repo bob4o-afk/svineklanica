@@ -17,8 +17,44 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 DEFAULT_USER_AGENT = (
-    "LiberHack-Watchdog/0.1 (+https://github.com/BabyNejii/corruption-fucker)"
+    "Svineklanitsa-Watchdog/0.1 (+https://github.com/bob4o-afk/svineklanica)"
 )
+
+# Search mode (``SEARCH_MODE`` env). Pick how `uv run search` ranks:
+#   - "vector"  -> embedding / pgvector semantic search (the AI path; needs the
+#                  `embed` extra + a model).
+#   - "keyword" -> BM25 over the normalized corpus (pure script, no AI, no extra).
+# Default stays "vector" to preserve current behavior; set SEARCH_MODE=keyword
+# (or normal/text/script) to run the AI-free path.
+SEARCH_MODE_VECTOR = "vector"
+SEARCH_MODE_KEYWORD = "keyword"
+DEFAULT_SEARCH_MODE = SEARCH_MODE_VECTOR
+
+_SEARCH_MODE_ALIASES = {
+    "vector": SEARCH_MODE_VECTOR,
+    "vectored": SEARCH_MODE_VECTOR,
+    "embedded": SEARCH_MODE_VECTOR,
+    "embedding": SEARCH_MODE_VECTOR,
+    "embeddings": SEARCH_MODE_VECTOR,
+    "semantic": SEARCH_MODE_VECTOR,
+    "keyword": SEARCH_MODE_KEYWORD,
+    "normal": SEARCH_MODE_KEYWORD,
+    "text": SEARCH_MODE_KEYWORD,
+    "script": SEARCH_MODE_KEYWORD,
+    "bm25": SEARCH_MODE_KEYWORD,
+}
+
+
+def resolve_search_mode(value: str | None) -> str | None:
+    """Map a raw mode string to a canonical mode, or ``None`` if unrecognized.
+
+    Accepts friendly aliases (``embedded``/``normal``/…). ``None``/empty resolves
+    to the default; an unknown non-empty value returns ``None`` so the caller can
+    surface a clear error instead of silently picking a mode.
+    """
+    if value is None or not value.strip():
+        return DEFAULT_SEARCH_MODE
+    return _SEARCH_MODE_ALIASES.get(value.strip().lower())
 
 # Known public procurement source domains. The env may override the base URL or
 # toggle a source on/off, but these are the defaults the scraper ships with.
@@ -104,6 +140,7 @@ class Config:
     user_agent: str
     request_timeout_s: float
     rate_limit_rps: float
+    search_mode: str
     sources: dict[str, SourceConfig]
 
     @property
@@ -150,10 +187,19 @@ def load_config() -> Config:
         enabled = _env_bool(f"{prefix}_ENABLED", default=False)
         sources[source_id] = SourceConfig(id=source_id, enabled=enabled, base_url=base_url)
 
+    raw_search_mode = os.environ.get("SEARCH_MODE")
+    search_mode = resolve_search_mode(raw_search_mode)
+    if search_mode is None:
+        valid = ", ".join(sorted(set(_SEARCH_MODE_ALIASES)))
+        raise ValueError(
+            f"Unknown SEARCH_MODE '{raw_search_mode}'. Use one of: {valid}."
+        )
+
     return Config(
         ingest_out_dir=ingest_out_dir,
         user_agent=os.environ.get("USER_AGENT", DEFAULT_USER_AGENT),
         request_timeout_s=_env_float("REQUEST_TIMEOUT_S", 30.0),
         rate_limit_rps=_env_float("RATE_LIMIT_RPS", 1.0),
+        search_mode=search_mode,
         sources=sources,
     )

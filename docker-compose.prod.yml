@@ -24,9 +24,10 @@ services:
       WEB_UPSTREAM_HOST: web
       WEB_UPSTREAM_PORT: "80"   # prod web image is nginx on :80
       # Whole-site blacklist gate (security.md §3): when "true", Caddy forward_auths
-      # a banned caller to a 403 for the ENTIRE page, not just /api. Off by default
-      # (and unset in dev) so a page load never depends on the API being up.
-      PAGE_GATE_ENABLED: ${PAGE_GATE_ENABLED:-false}
+      # a banned caller to a 403 for the ENTIRE page, not just /api. ON by default in
+      # prod (unset in dev). Trade-off: a page load now depends on the API answering
+      # /api/_gate — set PAGE_GATE_ENABLED=false to fall back to API-only blocking.
+      PAGE_GATE_ENABLED: ${PAGE_GATE_ENABLED:-true}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./deploy/caddy/error.html:/srv/caddy-errors/error.html:ro

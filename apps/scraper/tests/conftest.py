@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from scraper.config import Config, SourceConfig
+from scraper.config import DEFAULT_SEARCH_MODE, Config, SourceConfig
 from scraper.sources.base import RawPayload
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -55,6 +55,7 @@ def make_config(tmp_path: Path):
             user_agent="test-agent/1.0",
             request_timeout_s=5.0,
             rate_limit_rps=kwargs.get("rate_limit_rps", 1000.0),
+            search_mode=kwargs.get("search_mode", DEFAULT_SEARCH_MODE),
             sources=source_cfgs,
         )
 
