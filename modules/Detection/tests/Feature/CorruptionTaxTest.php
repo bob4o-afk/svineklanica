@@ -58,6 +58,27 @@ it('computes the score-weighted corruption rate and the user projection', functi
         ->and($result->topCases[1]->userShare)->toBe(100.0); // 1000 × 100k × 0.5 / 500k
 });
 
+it('excludes un-detected categories from the denominator (payments with no payment flag)', function () {
+    // A flagged tender + a big UNFLAGGED payment corpus (e.g. ingested SEBRA): payments
+    // have no payment-subject flag, so they must NOT inflate the denominator and crush
+    // the rate. Only tender spend (the category that carries a flag) is counted.
+    $t = Tender::factory()->create(['value' => 100000, 'sphere' => Sphere::Healthcare]);
+    Payment::create([
+        'source' => 'sebra', 'natural_key' => 'PAY-BIG-1',
+        'source_url' => 'https://minfin.bg/sebra/9', 'fetched_at' => Carbon::parse('2026-06-05T10:00:00Z'),
+        'title' => 'Голямо бюджетно плащане', 'sphere' => Sphere::Healthcare->value,
+        'amount' => 9000000, 'currency' => 'BGN', 'paid_at' => '2026-05-01',
+    ]);
+    Flag::factory()->create(['subject_type' => 'tender', 'subject_id' => $t->id, 'score' => 100]);
+
+    $result = app(CorruptionTaxCalculator::class)->calculate(1000.0);
+
+    // Denominator = tenders only (100k), NOT 100k + 9M. Rate stays a true 1.0, not 0.011.
+    expect($result->totalSpend)->toBe(100000.0)
+        ->and($result->flaggedSpend)->toBe(100000.0)
+        ->and($result->corruptionRate)->toBe(1.0);
+});
+
 it('returns 0 when there is no spend (no divide-by-zero)', function () {
     $result = app(CorruptionTaxCalculator::class)->calculate(1000.0);
 

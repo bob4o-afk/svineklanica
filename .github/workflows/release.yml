@@ -148,6 +148,19 @@ jobs:
             ROLLOUT_OK=""
             [ -x "$PLUGIN_DIR/docker-rollout" ] && ROLLOUT_OK=1
 
+            # Pin REGISTRY_OWNER to the SAME owner the build job pushed under (the
+            # lowercased repo owner), so a stale/hand-seeded value in the VM's .env.prod
+            # can't point the pull at a namespace nothing was published to (the classic
+            # "ghcr.io/<wrong-owner>/svineklanitsa-api:<sha>: not found", even when the
+            # images are public under the real owner). grep-then-write, same as IMAGE_TAG.
+            OWNER_LC="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+            if grep -q '^REGISTRY_OWNER=' .env.prod; then
+              sed -i "s/^REGISTRY_OWNER=.*/REGISTRY_OWNER=${OWNER_LC}/" .env.prod
+            else
+              echo "REGISTRY_OWNER=${OWNER_LC}" >> .env.prod
+            fi
+            echo "Pulling images from owner=${OWNER_LC}"
+
             # Pin the stack to the freshly built commit SHA, then pull. (sed exits 0
             # even when it matches nothing, so we can't rely on `sed || echo` to add a
             # missing line — grep-then-write, so IMAGE_TAG is ALWAYS the exact SHA and

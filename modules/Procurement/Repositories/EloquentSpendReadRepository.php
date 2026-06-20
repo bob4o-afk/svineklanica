@@ -27,8 +27,18 @@ final class EloquentSpendReadRepository implements SpendReadPort
 
     public function spendSummary(array $tenderWeights, array $paymentWeights): SpendSummaryData
     {
-        $tenderTotal = (float) DB::table('tenders')->sum('value');
-        $paymentTotal = (float) DB::table('payments')->sum('amount');
+        // The denominator counts only spend in categories that CAN carry a flag — i.e.
+        // categories with at least one flagged subject. A category with no detection
+        // coverage (today: payments, which no detector flags yet) would otherwise pile
+        // into the denominator while contributing nothing to the numerator, crushing the
+        // rate toward zero. Self-correcting: the first payment-subject flag pulls payments
+        // back into BOTH sides of the ratio. (Proxy caveat: this treats "detectors ran,
+        // found nothing" the same as "no detector" — fine while payments have no detector.)
+        $includeTenders = $tenderWeights !== [];
+        $includePayments = $paymentWeights !== [];
+
+        $tenderTotal = $includeTenders ? (float) DB::table('tenders')->sum('value') : 0.0;
+        $paymentTotal = $includePayments ? (float) DB::table('payments')->sum('amount') : 0.0;
 
         // sphere int (or '_' for null) => ['total' => x, 'flagged' => y]
         $acc = [];
@@ -38,12 +48,16 @@ final class EloquentSpendReadRepository implements SpendReadPort
             $acc[$key][$bucket] += $amount;
         };
 
-        // Totals per sphere (all rows, full value — the denominator is unweighted).
-        foreach (DB::table('tenders')->groupBy('sphere')->selectRaw('sphere, COALESCE(SUM(value),0) as amt')->get() as $r) {
-            $bump($r->sphere !== null ? (int) $r->sphere : null, 'total', (float) $r->amt);
+        // Totals per sphere — only for COUNTED categories, so per-sphere rates match the headline.
+        if ($includeTenders) {
+            foreach (DB::table('tenders')->groupBy('sphere')->selectRaw('sphere, COALESCE(SUM(value),0) as amt')->get() as $r) {
+                $bump($r->sphere !== null ? (int) $r->sphere : null, 'total', (float) $r->amt);
+            }
         }
-        foreach (DB::table('payments')->groupBy('sphere')->selectRaw('sphere, COALESCE(SUM(amount),0) as amt')->get() as $r) {
-            $bump($r->sphere !== null ? (int) $r->sphere : null, 'total', (float) $r->amt);
+        if ($includePayments) {
+            foreach (DB::table('payments')->groupBy('sphere')->selectRaw('sphere, COALESCE(SUM(amount),0) as amt')->get() as $r) {
+                $bump($r->sphere !== null ? (int) $r->sphere : null, 'total', (float) $r->amt);
+            }
         }
 
         // Flagged spend = Σ amount × weight, accumulated per sphere + as headline cases.
